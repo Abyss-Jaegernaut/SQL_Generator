@@ -50,20 +50,22 @@ def generate_machine_code():
     return _cached_machine_code
 
 
-def verify_activation_key(machine_code, activation_key, secret_phrase="SQL_GENERATOR_SECRET"):
+def verify_activation_key(machine_code, activation_key, secret_phrase):
     """Verify if the activation key matches the current machine"""
     expected_key = generate_activation_key(machine_code, secret_phrase)
     return activation_key.replace('-', '').replace(' ', '').upper() == expected_key.replace('-', '').replace(' ', '').upper()
 
 
-def generate_activation_key(machine_code, secret_phrase="SQL_GENERATOR_SECRET"):
+def generate_activation_key(machine_code, secret_phrase):
     """Generate an activation key for a given machine code"""
     # Important: Remove dashes and prefix to be robust against formatting
     clean_code = machine_code.replace('MACH-', '').replace('-', '').strip().upper()
     if not clean_code:
         return ""
         
-    combined = clean_code + secret_phrase
+    # Adding an internal salt for extra security
+    internal_salt = "B7-A1-C9-D4"
+    combined = clean_code + secret_phrase + internal_salt
     hashed = hashlib.sha256(combined.encode()).hexdigest()
     formatted_key = "{0}-{1}-{2}-{3}-{4}".format(
         hashed[:4].upper(), 

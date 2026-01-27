@@ -34,7 +34,7 @@ class SampleDataFrame(ttk.LabelFrame):
         
         btn_frame = ttk.Frame(self.input_frame)
         btn_frame.pack(fill="x", padx=4, pady=(0, 4))
-        self.submit_btn = ttk.Button(btn_frame, text="✅ Ajouter ligne", command=self._on_submit)
+        self.submit_btn = ttk.Button(btn_frame, text="✅ Ajouter une ligne", command=self._on_submit)
         self.submit_btn.pack(side="left")
         
         ttk.Button(btn_frame, text="❌ Annuler", command=self._cancel_edit).pack(side="left", padx=4)
@@ -105,6 +105,10 @@ class SampleDataFrame(ttk.LabelFrame):
                 r += 1
         
         self.submit_btn.configure(text="✅ Ajouter ligne")
+        
+        # Ensure new widgets get themed
+        from ui.theme_manager import ThemeManager
+        ThemeManager().refresh_theme(self.inputs_inner)
 
     def _refresh_tree(self) -> None:
         # Clear tree

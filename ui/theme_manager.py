@@ -61,57 +61,60 @@ THEMES = {
     ),
     "Violet": Theme(
         name="Violet",
-        bg="#0f172a",
-        fg="#f8fafc",
-        accent="#a855f7",
-        border="#1e293b",
-        tree_bg="#1e293b",
-        tree_fg="#cbd5e1",
-        tree_selected_bg="#334155",
+        bg="#130a21",          # Deep dark purple
+        fg="#f3e8ff",          # Purple 100
+        accent="#d946ef",      # Fuchsia 500
+        border="#4a044e",      # Fuchsia 950/Dark border
+        tree_bg="#221236",     # Dark purple layer
+        tree_fg="#e9d5ff",     # Purple 200
+        tree_selected_bg="#701a75",
         tree_selected_fg="#ffffff",
         syntax_colors={
-            "keyword": "#c678dd",
-            "identifier": "#e5c07b",
-            "type": "#61afef",
-            "string": "#98c379",
-            "comment": "#5c6370",
-        }
+            "keyword": "#e879f9",
+            "identifier": "#fcd34d",
+            "type": "#60a5fa",
+            "string": "#4ade80",
+            "comment": "#705275",
+        },
+        input_bg="#221236"
     ),
     "Orange": Theme(
         name="Orange",
-        bg="#0f172a",
-        fg="#f8fafc",
-        accent="#f97316",
-        border="#1e293b",
-        tree_bg="#1e293b",
-        tree_fg="#cbd5e1",
-        tree_selected_bg="#334155",
+        bg="#1c110a",          # Very dark brown/orange
+        fg="#ffedd5",          # Orange 100
+        accent="#f97316",      # Orange 500
+        border="#431407",      # Orange 950
+        tree_bg="#351a10",     # Dark brown layer
+        tree_fg="#fdba74",     # Orange 300
+        tree_selected_bg="#9a3412",
         tree_selected_fg="#ffffff",
         syntax_colors={
-            "keyword": "#f97316",    # Orange
-            "identifier": "#e5c07b",
-            "type": "#61afef",
-            "string": "#98c379",
-            "comment": "#5c6370",
-        }
+            "keyword": "#fb923c",
+            "identifier": "#fbbf24",
+            "type": "#38bdf8",
+            "string": "#a3e635",
+            "comment": "#786158",
+        },
+        input_bg="#351a10"
     ),
     "Jaune": Theme(
         name="Jaune",
-        bg="#0f172a",
-        fg="#f8fafc",
-        accent="#eab308",
-        border="#1e293b",
-        tree_bg="#1e293b",
-        tree_fg="#cbd5e1",
-        tree_selected_bg="#334155",
+        bg="#1a1608",         # Dark olive/yellow
+        fg="#fefce8",         # Yellow 50
+        accent="#eab308",     # Yellow 500
+        border="#422006",     # Brownish border
+        tree_bg="#2e260e",    # Olive layer
+        tree_fg="#fde047",    # Yellow 300
+        tree_selected_bg="#854d0e",
         tree_selected_fg="#ffffff",
         syntax_colors={
-            "keyword": "#eab308",    # Yellow
-            "identifier": "#e5c07b",
-            "type": "#61afef",
-            "string": "#98c379",
-            "comment": "#5c6370",
-        }
+            "keyword": "#facc15",
+            "identifier": "#fbbf24",
+            "type": "#60a5fa",
+            "string": "#a3e635",
+            "comment": "#635f45",
+        },
+        input_bg="#2e260e"
     ),
     "Clair": Theme(
         name="Clair",
@@ -140,13 +143,13 @@ class ThemeManager:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(ThemeManager, cls).__new__(cls)
-            # Default to Abyss as it was requested as the main one
-            cls._instance.current_theme = THEMES["Abyss"]
+            # Default to Clair as requested
+            cls._instance.current_theme = THEMES["Clair"]
         return cls._instance
 
     def apply_theme(self, theme_name, root):
         if theme_name not in THEMES:
-            theme_name = "Abyss"
+            theme_name = "Clair"
         
         theme = THEMES[theme_name]
         self.current_theme = theme
@@ -226,7 +229,15 @@ class ThemeManager:
         # Root background
         root.configure(bg=theme.bg)
         
-        self._update_all_widgets(root, theme)
+        self.refresh_theme(root)
+
+    def refresh_theme(self, widget=None):
+        """Apply the currently selected theme to the widget and all its children."""
+        if widget is None:
+            # We don't have a direct reference to root here if not passed, 
+            # but usually it's passed.
+            return
+        self._update_all_widgets(widget, self.current_theme)
 
     def _update_all_widgets(self, widget, theme):
         try:

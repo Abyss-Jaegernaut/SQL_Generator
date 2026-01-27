@@ -347,6 +347,10 @@ class _ColumnDialog(tk.Toplevel):
         frame = ttk.Frame(self, padding=10)
         frame.grid(row=0, column=0, sticky="nsew")
 
+        # Apply theme to this dialog
+        from ui.theme_manager import ThemeManager
+        ThemeManager().refresh_theme(self)
+
         ttk.Label(frame, text="Nom de colonne").grid(row=0, column=0, sticky="w")
         ttk.Entry(frame, textvariable=self.name_var, width=26).grid(row=1, column=0, sticky="ew", pady=(2, 8))
 

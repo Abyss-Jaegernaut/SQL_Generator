@@ -127,7 +127,11 @@ class AppController:
         self.storage.set_theme(theme_name)
 
     # --- HARDWARE-BASED LICENSE SYSTEM ---
-    SECRET_PHRASE = "SQL_GENERATOR_SECRET"
+    # Obfuscated secret phrase for license system
+    @property
+    def SECRET_PHRASE(self) -> str:
+        # Reconstruct the secret to avoid simple string searches
+        return "".join(["SQL_", "GEN", "ERATOR", "_S", "ECRET", "_ABYSS_2026"])
 
     def get_machine_code(self) -> str:
         """Get the current machine's hardware code (cached)"""

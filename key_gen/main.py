@@ -2,13 +2,17 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import hashlib
 
-def generate_key(machine_code, secret_phrase="SQL_GENERATOR_SECRET"):
+def generate_key(machine_code):
     """Generate an activation key based on the machine code."""
     # Important: Remove dashes and prefix to be robust against formatting
     clean_code = machine_code.replace('MACH-', '').replace('-', '').strip().upper()
     if not clean_code:
         return ""
-    combined = clean_code + secret_phrase
+    
+    # Updated secret logic to match the app
+    secret_phrase = "".join(["SQL_", "GEN", "ERATOR", "_S", "ECRET", "_ABYSS_2026"])
+    internal_salt = "B7-A1-C9-D4"
+    combined = clean_code + secret_phrase + internal_salt
     hashed = hashlib.sha256(combined.encode()).hexdigest()
     
     # Format: XXXX-XXXX-XXXX-XXXX-XXXX

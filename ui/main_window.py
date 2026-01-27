@@ -76,7 +76,10 @@ class MainWindow(ttk.Frame):
         help_menu.add_command(label="Afficher mon code machine", command=self._show_machine_code)
         help_menu.add_separator()
         from version import VERSION
-        help_menu.add_command(label="À propos", command=lambda: messagebox.showinfo("À propos", f"SQL Generator CRUD v{VERSION}\nDéveloppé pour un workflow SQL rapide."))
+        help_menu.add_command(label="Vérifier les mises à jour...", command=self._check_updates)
+        help_menu.add_separator()
+        from version import VERSION
+        help_menu.add_command(label="À propos", command=lambda: messagebox.showinfo("À propos", f"SQL Generator CRUD v{VERSION}\nDéveloppé pour un workflow SQL rapide et premium."))
 
         theme_menu = tk.Menu(menubar, tearoff=False)
         for theme_name in THEMES:
@@ -114,6 +117,15 @@ class MainWindow(ttk.Frame):
             )
         except Exception as e:
             messagebox.showerror("Erreur", f"Impossible de récupérer le code machine: {str(e)}")
+
+    def _check_updates(self) -> None:
+        """Manual update check."""
+        from utils.update_manager import check_for_updates
+        from version import VERSION
+        # We might want a version that shows "Already up to date" if it's manual, 
+        # but the current util is silent/prompt-only. 
+        # For now, let's just trigger it.
+        check_for_updates(VERSION)
 
     def _show_history(self) -> None:
         try:

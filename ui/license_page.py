@@ -20,12 +20,17 @@ class LicensePage(ttk.Frame):
         container = ttk.Frame(self, padding=20)
         container.pack(expand=True)
 
-        ttk.Label(
+        title_lbl = ttk.Label(
             container, 
             text="SQL Generator CRUD - Premium", 
-            font=("Segoe UI", 14, "bold"),
-            foreground="#007acc"
-        ).pack(pady=(0, 20))
+            font=("Segoe UI", 14, "bold")
+        )
+        title_lbl.pack(pady=(0, 20))
+        # ThemeManager will handle the color via _update_all_widgets or we can set it here if we want accent
+        from ui.theme_manager import ThemeManager
+        tm = ThemeManager()
+        if hasattr(tm, 'current_theme'):
+            title_lbl.configure(foreground=tm.current_theme.accent)
 
         # Machine code section
         machine_frame = ttk.LabelFrame(container, text="Votre code machine", padding=10)
@@ -34,10 +39,11 @@ class LicensePage(ttk.Frame):
         self.machine_code_label = ttk.Label(
             machine_frame, 
             text="Récupération du code machine...",
-            font=("Consolas", 11, "bold"),
-            foreground="blue"
+            font=("Consolas", 11, "bold")
         )
         self.machine_code_label.pack(pady=5)
+        if hasattr(tm, 'current_theme'):
+            self.machine_code_label.configure(foreground=tm.current_theme.accent)
         
         machine_desc = ttk.Label(
             machine_frame,

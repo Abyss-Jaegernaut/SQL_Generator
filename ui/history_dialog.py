@@ -25,6 +25,8 @@ class HistoryDialog(tk.Toplevel):
 
         self.history = history
         self._build_ui()
+        from ui.theme_manager import ThemeManager
+        ThemeManager().apply_theme(ThemeManager().current_theme.name, self)
 
     def _build_ui(self) -> None:
         # Split screen: List on left, preview on right
@@ -53,7 +55,7 @@ class HistoryDialog(tk.Toplevel):
         right_frame = ttk.LabelFrame(paned, text="Contenu SQL")
         paned.add(right_frame, weight=3)
 
-        self.text = tk.Text(right_frame, wrap="none", bg="#ffffff", fg="#000000", font=("Consolas", 10))
+        self.text = tk.Text(right_frame, wrap="none", font=("Consolas", 10))
         vsb = ttk.Scrollbar(right_frame, orient="vertical", command=self.text.yview)
         hsb = ttk.Scrollbar(right_frame, orient="horizontal", command=self.text.xview)
         self.text.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)

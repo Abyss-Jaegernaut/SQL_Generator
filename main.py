@@ -6,12 +6,28 @@ from tkinter import messagebox
 from controllers.app_controller import AppController
 from data.storage import Storage
 from ui.main_window import MainWindow
+from ui.theme_manager import ThemeManager
+from utils.update_manager import check_for_updates
+from version import VERSION
 
 def run_app() -> None:
     try:
         root = tk.Tk()
         root.title("SQL Generator CRUD")
-        root.geometry("600x550")
+        
+        # Adaptive UI: Calculate size based on screen (80% of screen width/height, capped)
+        screen_w = root.winfo_screenwidth()
+        screen_h = root.winfo_screenheight()
+        
+        width = min(1200, int(screen_w * 0.85))
+        height = min(800, int(screen_h * 0.85))
+        
+        # Center the window
+        x = (screen_w // 2) - (width // 2)
+        y = (screen_h // 2) - (height // 2)
+        
+        root.geometry(f"{width}x{height}+{x}+{y}")
+        root.minsize(900, 650) # Prevent window from being too small
         
         # Set window icon
         icon_path = "icon.ico"
@@ -27,6 +43,13 @@ def run_app() -> None:
 
         storage = Storage(db_path="sql_generator.db")
         controller = AppController(storage=storage)
+        
+        # Apply theme early
+        theme_manager = ThemeManager()
+        theme_manager.apply_theme(controller.get_theme(), root)
+        
+        # Check for updates in background
+        check_for_updates(VERSION)
 
         def launch_main():
             # Clear root

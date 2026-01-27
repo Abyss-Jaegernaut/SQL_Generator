@@ -7,6 +7,7 @@ from ui.license_dialog import LicenseDialog
 from ui.sample_data_frame import SampleDataFrame
 from ui.sql_preview_frame import SQLPreviewFrame
 from ui.table_definition_frame import TableDefinitionFrame
+from ui.theme_manager import ThemeManager, THEMES
 
 
 class MainWindow(ttk.Frame):
@@ -26,6 +27,7 @@ class MainWindow(ttk.Frame):
             "Delete": tk.BooleanVar(value=False),
         }
         self.pack(fill="both", expand=True)
+        self.theme_manager = ThemeManager()
         self._setup_style()
         self._update_title()
         self._build_menu()
@@ -33,43 +35,29 @@ class MainWindow(ttk.Frame):
         self._refresh_outputs()
 
     def _setup_style(self) -> None:
-        """Configure custom ttk styles for a premium look."""
-        style = ttk.Style()
-        
-        # Try to use a modern theme base
-        current_themes = style.theme_names()
-        if "vista" in current_themes:
-            style.theme_use("vista")
-        elif "clam" in current_themes:
-            style.theme_use("clam")
+        """Apply current theme."""
+        saved_theme = self.controller.get_theme()
+        self.theme_manager.apply_theme(saved_theme, self.winfo_toplevel())
 
-        # Colors
-        bg_main = "#f8f9fa"
-        accent_color = "#0078d4"
-        text_main = "#212529"
-        border_color = "#dee2e6"
-
-        style.configure("TFrame", background=bg_main)
-        style.configure("TLabelframe", background=bg_main, foreground=accent_color, font=("Segoe UI", 10, "bold"))
-        style.configure("TLabelframe.Label", background=bg_main, foreground=accent_color)
+    def _change_theme(self, theme_name: str) -> None:
+        """Change application theme and save preference."""
+        self.controller.set_theme(theme_name)
+        self.theme_manager.apply_theme(theme_name, self.winfo_toplevel())
         
-        style.configure("TLabel", background=bg_main, foreground=text_main, font=("Segoe UI", 9))
-        style.configure("TButton", font=("Segoe UI", 9), padding=5)
-
-        style.configure("Treeview", font=("Segoe UI", 9), rowheight=25)
-        style.configure("Treeview.Heading", font=("Segoe UI", 9, "bold"))
-        
-        # Configure root
-        self.winfo_toplevel().configure(bg=bg_main)
+        # Refresh SQL Preview colors
+        if hasattr(self, 'sql_preview_frame'):
+            self.sql_preview_frame._configure_syntax_highlighting()
+            self._refresh_outputs()
 
     def _update_title(self) -> None:
         root = self.winfo_toplevel()
         try:
             status = "PREMIUM" if self.controller.is_activated() else "VERSION D'ÉVALUATION"
         except Exception:
-            # In case of error checking activation, assume not activated
             status = "VERSION D'ÉVALUATION"
-        root.title(f"SQL Generator CRUD - {status}")
+        
+        from version import VERSION
+        root.title(f"SQL Generator CRUD {VERSION} - {status}")
 
     def _build_menu(self) -> None:
         root = self.winfo_toplevel()
@@ -87,9 +75,18 @@ class MainWindow(ttk.Frame):
         help_menu.add_command(label="Activer la licence…", command=self._show_license)
         help_menu.add_command(label="Afficher mon code machine", command=self._show_machine_code)
         help_menu.add_separator()
-        help_menu.add_command(label="À propos", command=lambda: messagebox.showinfo("À propos", "SQL Generator CRUD v1.1.5\nDéveloppé pour un workflow SQL rapide."))
+        from version import VERSION
+        help_menu.add_command(label="À propos", command=lambda: messagebox.showinfo("À propos", f"SQL Generator CRUD v{VERSION}\nDéveloppé pour un workflow SQL rapide."))
+
+        theme_menu = tk.Menu(menubar, tearoff=False)
+        for theme_name in THEMES:
+            theme_menu.add_command(
+                label=theme_name, 
+                command=lambda t=theme_name: self._change_theme(t)
+            )
 
         menubar.add_cascade(label="Fichier", menu=file_menu)
+        menubar.add_cascade(label="Thèmes", menu=theme_menu)
         menubar.add_cascade(label="Aide", menu=help_menu)
         root.config(menu=menubar)
 
@@ -129,13 +126,18 @@ class MainWindow(ttk.Frame):
             messagebox.showerror("Erreur", f"Impossible d'accéder à l'historique: {str(e)}")
 
     def _build_layout(self) -> None:
-        self.columnconfigure(0, weight=1)
-        self.columnconfigure(1, weight=1)
-        self.rowconfigure(0, weight=1)
-        self.rowconfigure(1, weight=1)
+        self.columnconfigure(0, weight=2) # Table definition gets more space
+        self.columnconfigure(1, weight=3) # SQL Preview gets even more
+        self.rowconfigure(0, weight=3)    # Main components grow
+        self.rowconfigure(1, weight=2)    # Data entry grows less
 
-        self.sample_data_frame = SampleDataFrame(master=self, controller=self.controller, on_updated=self._refresh_outputs)
-        self.sample_data_frame.grid(row=1, column=0, columnspan=2, sticky="nsew", padx=8, pady=8)
+        self.sql_preview_frame = SQLPreviewFrame(
+            master=self, 
+            actions_vars=self.actions_vars, 
+            on_actions_changed=self._refresh_outputs,
+            on_save_history=self.controller.add_to_history
+        )
+        self.sql_preview_frame.grid(row=0, column=1, sticky="nsew", padx=8, pady=8)
 
         self.table_frame = TableDefinitionFrame(
             master=self,
@@ -145,13 +147,8 @@ class MainWindow(ttk.Frame):
         )
         self.table_frame.grid(row=0, column=0, sticky="nsew", padx=8, pady=8)
 
-        self.sql_preview_frame = SQLPreviewFrame(
-            master=self, 
-            actions_vars=self.actions_vars, 
-            on_actions_changed=self._refresh_outputs,
-            on_save_history=self.controller.add_to_history
-        )
-        self.sql_preview_frame.grid(row=0, column=1, sticky="nsew", padx=8, pady=8)
+        self.sample_data_frame = SampleDataFrame(master=self, controller=self.controller, on_updated=self._refresh_outputs)
+        self.sample_data_frame.grid(row=1, column=0, columnspan=2, sticky="nsew", padx=8, pady=8)
 
     def _on_table_selected(self, table_idx: int) -> None:
         """Called when user selects a different table in the definition frame."""

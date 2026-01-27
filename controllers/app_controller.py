@@ -120,6 +120,12 @@ class AppController:
     def get_history(self) -> list[dict]:
         return self.storage.get_history()
 
+    def get_theme(self) -> str:
+        return self.storage.get_theme()
+
+    def set_theme(self, theme_name: str) -> None:
+        self.storage.set_theme(theme_name)
+
     # --- HARDWARE-BASED LICENSE SYSTEM ---
     SECRET_PHRASE = "SQL_GENERATOR_SECRET"
 

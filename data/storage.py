@@ -131,6 +131,29 @@ class Storage:
             # Silently handle license setting errors
             pass
 
+    def get_theme(self) -> str:
+        """Retrieve the saved theme name, defaults to 'Clair'."""
+        try:
+            with sqlite3.connect(self.db_path) as con:
+                cur = con.execute("SELECT val FROM config WHERE key = 'theme'")
+                row = cur.fetchone()
+            return row[0] if row else "Clair"
+        except Exception:
+            return "Clair"
+
+    def set_theme(self, theme_name: str) -> None:
+        """Save the theme name."""
+        try:
+            with sqlite3.connect(self.db_path) as con:
+                con.execute(
+                    "INSERT INTO config(key, val) VALUES('theme', ?) "
+                    "ON CONFLICT(key) DO UPDATE SET val=excluded.val",
+                    (theme_name,)
+                )
+                con.commit()
+        except Exception:
+            pass
+
     def _init_db(self) -> None:
         try:
             os.makedirs(os.path.dirname(self.db_path) or ".", exist_ok=True)

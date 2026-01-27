@@ -21,6 +21,9 @@ class LicenseDialog(tk.Toplevel):
         self.page = LicensePage(self, controller, on_success=self._on_success)
         self.page.pack(fill="both", expand=True)
 
+        from ui.theme_manager import ThemeManager
+        ThemeManager().apply_theme(ThemeManager().current_theme.name, self)
+
         self.success = False
         
         # Center manually without complex withdraw logic

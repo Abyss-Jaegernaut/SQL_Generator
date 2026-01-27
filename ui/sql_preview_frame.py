@@ -20,35 +20,49 @@ class SQLPreviewFrame(ttk.LabelFrame):
         ttk.Button(toolbar, text="💾 Exporter .sql", command=self.export_sql).pack(side="left", padx=(6, 0))
         ttk.Button(toolbar, text="📜 Sauvegarder dans l'historique", command=self._save_to_history).pack(side="left", padx=(6, 0))
 
+        # Actions area (Single line as requested)
         actions_frame = ttk.Frame(self)
         actions_frame.pack(fill="x", padx=4, pady=(2, 2))
-        ttk.Label(actions_frame, text="✅ Sections / Procédures :").pack(side="left", padx=(0, 6))
+        
+        ttk.Label(actions_frame, text="✅ Sections / Procédures :", font=("Segoe UI", 9, "bold")).pack(side="left", padx=(0, 6))
+        
         for name, var in self.actions_vars.items():
-            chk = ttk.Checkbutton(actions_frame, text=name, variable=var, command=self.on_actions_changed)
+            # Standard tk.Checkbutton as requested
+            chk = tk.Checkbutton(
+                actions_frame, 
+                text=name, 
+                variable=var, 
+                command=self.on_actions_changed,
+                font=("Segoe UI", 9)
+            )
             chk.pack(side="left", padx=(2, 2))
+            
         ttk.Button(actions_frame, text="🔁 Tout sélectionner", command=self._select_all).pack(side="left", padx=(6, 0))
 
-        self.text = tk.Text(self, height=24, wrap="none", bg="#ffffff", fg="#000000", 
-                           insertbackground="black", font=("Consolas", 10))
+        self.text = tk.Text(self, height=24, wrap="none", font=("Consolas", 10))
         self._configure_syntax_highlighting()
         self.text.configure(state="disabled")
         self.text.pack(fill="both", expand=True, padx=4, pady=4)
         self._last_sql = ""
 
     def _configure_syntax_highlighting(self) -> None:
-        """Configure text widget tags for SQL syntax highlighting."""
-        # Keywords - Blue
-        self.text.tag_configure("keyword", foreground="#0000ff", font=("Consolas", 10, "bold"))
-        # Strings - Dark Red
-        self.text.tag_configure("string", foreground="#a31515")
-        # Comments - Green
-        self.text.tag_configure("comment", foreground="#008000")
-        # Numbers - Dark Cyan
-        self.text.tag_configure("number", foreground="#098658")
-        # Identifiers - Teal/Navy
-        self.text.tag_configure("identifier", foreground="#267f99")
-        # Functions - Magenta/Purple
-        self.text.tag_configure("function", foreground="#795e26")
+        """Configure text widget tags for SQL syntax highlighting using the current theme."""
+        from ui.theme_manager import ThemeManager
+        theme = ThemeManager().current_theme
+        syntax = theme.syntax_colors
+
+        # Keywords
+        self.text.tag_configure("keyword", foreground=syntax.get("keyword", "#c678dd"), font=("Consolas", 10, "bold"))
+        # Identifiers
+        self.text.tag_configure("identifier", foreground=syntax.get("identifier", "#e5c07b"))
+        # Types and general numbers
+        self.text.tag_configure("number", foreground=syntax.get("type", "#61afef"))
+        # Strings
+        self.text.tag_configure("string", foreground=syntax.get("string", "#98c379"))
+        # Comments
+        self.text.tag_configure("comment", foreground=syntax.get("comment", "#5c6370"))
+        # Extra (Functions etc)
+        self.text.tag_configure("function", foreground=syntax.get("type", "#61afef"))
 
     def _select_all(self) -> None:
         # If all are checked, uncheck all. Otherwise check all.

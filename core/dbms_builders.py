@@ -56,11 +56,8 @@ GO"""
 USE `{db_name}`;"""
     
     elif dbms == "postgresql":
-        # PostgreSQL doesn't have IF NOT EXISTS for CREATE DATABASE in standard SQL
-        # and you can't CREATE DATABASE in a transaction, so we'll use a comment
-        return f"""-- Run this command if database doesn't exist:
--- CREATE DATABASE "{db_name}";
-
+        # Using psql-specific trick to create database only if it doesn't exist
+        return f"""SELECT 'CREATE DATABASE "{db_name}"' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '{db_name}')\\gexec
 \\c {db_name};"""
     
     return ""
@@ -218,7 +215,17 @@ def _build_proc_insert(table: models.TableModel, dbms: str) -> str:
     elif dbms == "mysql":
         params = ",\n".join([f"    IN p_{c.name} {_map_data_type(c.sql_type, dbms)}" for c in cols])
         vals = ", ".join([f"p_{c.name}" for c in cols])
-        return f"CREATE PROCEDURE {proc_name}(\n{params}\n)\nBEGIN\n    INSERT INTO {_quote_identifier(table.name, dbms)} ({col_names})\n    VALUES ({vals});\nEND;"
+        return (
+            f"DELIMITER $$\n"
+            f"CREATE PROCEDURE {proc_name}(\n"
+            f"{params}\n"
+            f")\n"
+            f"BEGIN\n"
+            f"    INSERT INTO {_quote_identifier(table.name, dbms)} ({col_names})\n"
+            f"    VALUES ({vals});\n"
+            f"END $$\n"
+            f"DELIMITER ;"
+        )
     
     elif dbms == "postgresql":
         params = ",\n".join([f"    p_{c.name} {_map_data_type(c.sql_type, dbms)}" for c in cols])
@@ -230,14 +237,24 @@ def _build_proc_insert(table: models.TableModel, dbms: str) -> str:
 
 def _build_proc_get_by_id(table: models.TableModel, dbms: str) -> str:
     proc_name = rules.procedure_name(table.name, "GetById")
-    if not table.primary_keys: return ""
+    if not table.primary_keys:
+        return f"-- Cannot generate {proc_name}: Table has no Primary Key"
     pk = table.primary_keys[0]
     
     if dbms == "sqlserver":
         return f"CREATE PROCEDURE {proc_name}\n    @{pk.name} {_map_data_type(pk.sql_type, dbms)}\nAS\nBEGIN\n    SELECT * FROM {_quote_identifier(table.name, dbms)} WHERE {_quote_identifier(pk.name, dbms)} = @{pk.name};\nEND\nGO"
     
     elif dbms == "mysql":
-        return f"CREATE PROCEDURE {proc_name}(\n    IN p_{pk.name} {_map_data_type(pk.sql_type, dbms)}\n)\nBEGIN\n    SELECT * FROM {_quote_identifier(table.name, dbms)} WHERE {_quote_identifier(pk.name, dbms)} = p_{pk.name};\nEND;"
+        return (
+            f"DELIMITER $$\n"
+            f"CREATE PROCEDURE {proc_name}(\n"
+            f"    IN p_{pk.name} {_map_data_type(pk.sql_type, dbms)}\n"
+            f")\n"
+            f"BEGIN\n"
+            f"    SELECT * FROM {_quote_identifier(table.name, dbms)} WHERE {_quote_identifier(pk.name, dbms)} = p_{pk.name};\n"
+            f"END $$\n"
+            f"DELIMITER ;"
+        )
     
     elif dbms == "postgresql":
         # In Postgres, functions are often preferred for SELECTs
@@ -253,7 +270,14 @@ def _build_proc_select_all(table: models.TableModel, dbms: str) -> str:
         return f"CREATE PROCEDURE {proc_name}\nAS\nBEGIN\n    SELECT * FROM {_quote_identifier(table.name, dbms)};\nEND\nGO"
     
     elif dbms == "mysql":
-        return f"CREATE PROCEDURE {proc_name}()\nBEGIN\n    SELECT * FROM {_quote_identifier(table.name, dbms)};\nEND;"
+        return (
+            f"DELIMITER $$\n"
+            f"CREATE PROCEDURE {proc_name}()\n"
+            f"BEGIN\n"
+            f"    SELECT * FROM {_quote_identifier(table.name, dbms)};\n"
+            f"END $$\n"
+            f"DELIMITER ;"
+        )
     
     elif dbms == "postgresql":
         return f"CREATE OR REPLACE FUNCTION {proc_name}()\nRETURNS SETOF {_quote_identifier(table.name, dbms)}\nLANGUAGE sql\nAS $$\n    SELECT * FROM {_quote_identifier(table.name, dbms)};\n$$;"
@@ -263,9 +287,12 @@ def _build_proc_select_all(table: models.TableModel, dbms: str) -> str:
 
 def _build_proc_update(table: models.TableModel, dbms: str) -> str:
     proc_name = rules.procedure_name(table.name, "Update")
-    if not table.primary_keys: return ""
+    if not table.primary_keys:
+        return f"-- Cannot generate {proc_name}: Table has no Primary Key"
     pk = table.primary_keys[0]
     cols = [c for c in table.columns if not c.is_primary_key]
+    if not cols:
+        return f"-- Cannot generate {proc_name}: Table '{table.name}' has no non-PK columns to update"
     
     if dbms == "sqlserver":
         params = ",\n".join([f"    @{c.name} {_map_data_type(c.sql_type, dbms)}" for c in table.columns])
@@ -275,7 +302,16 @@ def _build_proc_update(table: models.TableModel, dbms: str) -> str:
     elif dbms == "mysql":
         params = ",\n".join([f"    IN p_{c.name} {_map_data_type(c.sql_type, dbms)}" for c in table.columns])
         set_clause = ", ".join([f"{_quote_identifier(c.name, dbms)} = p_{c.name}" for c in cols])
-        return f"CREATE PROCEDURE {proc_name}(\n{params}\n)\nBEGIN\n    UPDATE {_quote_identifier(table.name, dbms)} SET {set_clause} WHERE {_quote_identifier(pk.name, dbms)} = p_{pk.name};\nEND;"
+        return (
+            f"DELIMITER $$\n"
+            f"CREATE PROCEDURE {proc_name}(\n"
+            f"{params}\n"
+            f")\n"
+            f"BEGIN\n"
+            f"    UPDATE {_quote_identifier(table.name, dbms)} SET {set_clause} WHERE {_quote_identifier(pk.name, dbms)} = p_{pk.name};\n"
+            f"END $$\n"
+            f"DELIMITER ;"
+        )
     
     elif dbms == "postgresql":
         params = ",\n".join([f"    p_{c.name} {_map_data_type(c.sql_type, dbms)}" for c in table.columns])
@@ -287,14 +323,24 @@ def _build_proc_update(table: models.TableModel, dbms: str) -> str:
 
 def _build_proc_delete(table: models.TableModel, dbms: str) -> str:
     proc_name = rules.procedure_name(table.name, "Delete")
-    if not table.primary_keys: return ""
+    if not table.primary_keys:
+        return f"-- Cannot generate {proc_name}: Table has no Primary Key"
     pk = table.primary_keys[0]
     
     if dbms == "sqlserver":
         return f"CREATE PROCEDURE {proc_name}\n    @{pk.name} {_map_data_type(pk.sql_type, dbms)}\nAS\nBEGIN\n    DELETE FROM {_quote_identifier(table.name, dbms)} WHERE {_quote_identifier(pk.name, dbms)} = @{pk.name};\nEND\nGO"
     
     elif dbms == "mysql":
-        return f"CREATE PROCEDURE {proc_name}(\n    IN p_{pk.name} {_map_data_type(pk.sql_type, dbms)}\n)\nBEGIN\n    DELETE FROM {_quote_identifier(table.name, dbms)} WHERE {_quote_identifier(pk.name, dbms)} = p_{pk.name};\nEND;"
+        return (
+            f"DELIMITER $$\n"
+            f"CREATE PROCEDURE {proc_name}(\n"
+            f"    IN p_{pk.name} {_map_data_type(pk.sql_type, dbms)}\n"
+            f")\n"
+            f"BEGIN\n"
+            f"    DELETE FROM {_quote_identifier(table.name, dbms)} WHERE {_quote_identifier(pk.name, dbms)} = p_{pk.name};\n"
+            f"END $$\n"
+            f"DELIMITER ;"
+        )
     
     elif dbms == "postgresql":
         return f"CREATE OR REPLACE PROCEDURE {proc_name}(\n    p_{pk.name} {_map_data_type(pk.sql_type, dbms)}\n)\nLANGUAGE plpgsql\nAS $$\nBEGIN\n    DELETE FROM {_quote_identifier(table.name, dbms)} WHERE {_quote_identifier(pk.name, dbms)} = p_{pk.name};\nEND;\n$$;"

@@ -33,6 +33,7 @@ class TableDefinitionFrame(ttk.LabelFrame):
 
         ttk.Label(self, text="SGBD").grid(row=1, column=0, sticky="w", padx=6, pady=2)
         self.dbms_var = tk.StringVar(value="SQL Server")
+        self.dbms_var.trace_add("write", lambda *args: self._apply_to_controller())
         dbms_combo = ttk.Combobox(
             self, 
             textvariable=self.dbms_var, 
@@ -87,7 +88,7 @@ class TableDefinitionFrame(ttk.LabelFrame):
         ttk.Button(btns, text="➕ Ajouter", command=self._add_column).pack(side="left")
         ttk.Button(btns, text="✏️ Modifier", command=self._edit_selected).pack(side="left", padx=(6, 0))
         ttk.Button(btns, text="🗑️ Supprimer", command=self._delete_selected).pack(side="left", padx=(6, 0))
-        ttk.Button(btns, text="⚡ Appliquer", command=self._apply_to_controller).pack(side="right")
+        # Button removed as everything is now reactive
 
         self.rowconfigure(3, weight=1)
         self.columnconfigure(1, weight=1)
@@ -98,6 +99,7 @@ class TableDefinitionFrame(ttk.LabelFrame):
     def _load_demo_defaults(self) -> None:
         self._add_tables_bulk(initial=True)
         self._active_index = 0
+        self._apply_to_controller()
 
     def load_from_project(self, db_name: str, tables: list[models.TableModel], dbms: str = "sqlserver") -> None:
         """Populate the frame with existing project data."""
@@ -149,6 +151,10 @@ class TableDefinitionFrame(ttk.LabelFrame):
             table = models.TableModel(name=name, columns=[models.ColumnModel(name="id", sql_type="INT", nullable=False, is_primary_key=True, is_auto_increment=False)])
             self.tables.append(table)
             self.table_list.insert("end", name)
+        
+        if not initial:
+            self._apply_to_controller()
+            
         if initial:
             self.table_list.selection_set(0)
             self._active_index = 0
@@ -173,6 +179,7 @@ class TableDefinitionFrame(ttk.LabelFrame):
         
         self._active_index = new_index
         self._load_table_into_form(new_index)
+        self._apply_to_controller()
 
     def _on_table_select(self, event=None) -> None:
         # First, save the PREVIOUSLY active table from the current form
@@ -249,6 +256,7 @@ class TableDefinitionFrame(ttk.LabelFrame):
             pk=dlg.result["pk"],
             identity=dlg.result["identity"],
         )
+        self._apply_to_controller()
 
     def _edit_selected(self) -> None:
         iid = self._selected_iid()
@@ -278,12 +286,14 @@ class TableDefinitionFrame(ttk.LabelFrame):
                 "YES" if dlg.result["identity"] else "NO",
             ),
         )
+        self._apply_to_controller()
 
     def _delete_selected(self) -> None:
         iid = self._selected_iid()
         if iid is None:
             return
         self.tree.delete(iid)
+        self._apply_to_controller()
 
     def _maybe_enforce_single_pk(self, pk_selected: bool, editing_iid: str | None = None) -> None:
         # V1.0.1: one PK only (simplifies SP GetById/Delete)

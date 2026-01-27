@@ -10,6 +10,7 @@ class AppController:
     def __init__(self, storage: Storage) -> None:
         self.storage = storage
         self.current_project = models.DatabaseProject(database_name="")
+        self._cached_machine_code = None
 
     def set_database_name(self, name: str) -> None:
         self.current_project.database_name = name
@@ -62,7 +63,7 @@ class AppController:
                 if insert_sql:
                     blocks.append(f"-- Données saisies pour {table.name}\n{insert_sql}")
 
-        return "\n\n".join(blocks)
+        return "\n\n".join([b for b in blocks if b.strip()])
     
     def _generate_insert_statements(self, table: models.TableModel, dbms: str) -> str:
         """Generate INSERT statements from manually entered rows."""
@@ -119,36 +120,69 @@ class AppController:
     def get_history(self) -> list[dict]:
         return self.storage.get_history()
 
-    # --- LICENSE SYSTEM ---
-    VALID_LICENSE = "ABCD-1234-EFGH-5678-IJKL"
+    # --- HARDWARE-BASED LICENSE SYSTEM ---
+    SECRET_PHRASE = "SQL_GENERATOR_SECRET"
 
+    def get_machine_code(self) -> str:
+        """Get the current machine's hardware code (cached)"""
+        if self._cached_machine_code:
+            return self._cached_machine_code
+            
+        try:
+            # Try to import our hardware ID module
+            from utils.hardware_id import generate_machine_code
+            self._cached_machine_code = generate_machine_code()
+            return self._cached_machine_code
+        except Exception:
+            # Fallback if hardware_id module doesn't exist yet
+            return "MACH-FALL-BACKK-CODEE"
+    
     def is_activated(self) -> bool:
-        """Check if the license is activated by checking both storage methods for consistency."""
-        # Check the database-stored license key first
-        db_activated = self.storage.get_license_key() == self.VALID_LICENSE
-        
-        # Also check the file-based activation for backward compatibility
-        from activation_storage import is_activated as file_is_activated
-        file_activated = file_is_activated()
-        
-        # If either method indicates activation, consider it activated
-        # But prioritize the database method and sync the file if needed
-        if db_activated and not file_activated:
-            # Database says activated but file doesn't - sync the file
-            from activation_storage import set_activated
-            set_activated()
-        elif file_activated and not db_activated:
-            # File says activated but database doesn't - sync the database
-            self.storage.set_license_key(self.VALID_LICENSE)
-        
-        return db_activated or file_activated
+        """Check if the license is activated using hardware-based verification."""
+        try:
+            # Get the machine code for this computer
+            current_machine_code = self.get_machine_code()
+            
+            # Get the activation key from storage
+            stored_key = self.storage.get_license_key()
+            
+            if not stored_key:
+                return False
+            
+            # Verify if the stored key matches this machine
+            from utils.hardware_id import verify_activation_key
+            return verify_activation_key(current_machine_code, stored_key, self.SECRET_PHRASE)
+        except Exception:
+            # If there's any error in hardware verification, assume not activated
+            return False
 
     def activate_license(self, key: str) -> bool:
-        """Try to activate with a key."""
-        if key.strip().upper() == self.VALID_LICENSE:
-            self.storage.set_license_key(self.VALID_LICENSE)
-            # Also update the file-based activation for consistency
-            from activation_storage import set_activated
-            set_activated()
-            return True
-        return False
+        """Try to activate with a hardware-based key."""
+        try:
+            # Get the machine code for this computer
+            current_machine_code = self.get_machine_code()
+            
+            # Verify if the provided key matches this machine
+            from utils.hardware_id import verify_activation_key
+            if verify_activation_key(current_machine_code, key, self.SECRET_PHRASE):
+                # Store the valid key in the database
+                self.storage.set_license_key(key)
+                
+                # Also update the file-based activation for consistency
+                from activation_storage import set_activated
+                set_activated()
+                
+                return True
+            else:
+                return False
+        except Exception:
+            return False
+    
+    def generate_activation_key_for_machine(self, machine_code: str) -> str:
+        """Generate an activation key for a specific machine code (for developer use)"""
+        try:
+            from utils.hardware_id import generate_activation_key
+            return generate_activation_key(machine_code, self.SECRET_PHRASE)
+        except ImportError:
+            # If the hardware_id module doesn't exist yet, return a dummy key
+            return "DEV-KEY-FOR-" + machine_code[:4]

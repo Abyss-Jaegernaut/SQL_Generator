@@ -85,8 +85,9 @@ class MainWindow(ttk.Frame):
 
         help_menu = tk.Menu(menubar, tearoff=False)
         help_menu.add_command(label="Activer la licence…", command=self._show_license)
+        help_menu.add_command(label="Afficher mon code machine", command=self._show_machine_code)
         help_menu.add_separator()
-        help_menu.add_command(label="À propos", command=lambda: messagebox.showinfo("À propos", "SQL Generator CRUD v1.1\nDéveloppé pour un workflow SQL rapide."))
+        help_menu.add_command(label="À propos", command=lambda: messagebox.showinfo("À propos", "SQL Generator CRUD v1.1.5\nDéveloppé pour un workflow SQL rapide."))
 
         menubar.add_cascade(label="Fichier", menu=file_menu)
         menubar.add_cascade(label="Aide", menu=help_menu)
@@ -104,6 +105,18 @@ class MainWindow(ttk.Frame):
                 self._update_title()
         except Exception as e:
             messagebox.showerror("Erreur", f"Problème avec le système d'activation: {str(e)}")
+
+    def _show_machine_code(self) -> None:
+        """Display the current machine code to the user"""
+        try:
+            machine_code = self.controller.get_machine_code()
+            messagebox.showinfo(
+                "Code Machine", 
+                f"Votre code machine est:\n\n{machine_code}\n\n"
+                f"Ce code est unique à cet ordinateur. Envoyez-le au développeur pour obtenir une clé d'activation."
+            )
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Impossible de récupérer le code machine: {str(e)}")
 
     def _show_history(self) -> None:
         try:

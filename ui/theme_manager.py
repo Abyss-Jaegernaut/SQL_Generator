@@ -204,6 +204,12 @@ class ThemeManager:
                         foreground=theme.fg, 
                         selectbackground=theme.accent,
                         padding=5)
+        
+        style.map("TCombobox",
+                  fieldbackground=[('readonly', theme.input_bg), ('active', theme.input_bg)],
+                  background=[('readonly', theme.input_bg), ('active', theme.input_bg)],
+                  foreground=[('readonly', theme.fg), ('active', theme.fg)],
+                  arrowcolor=[('readonly', theme.fg), ('active', theme.fg)])
 
         # TSpinbox
         style.configure("TSpinbox", 

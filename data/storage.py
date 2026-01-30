@@ -61,6 +61,25 @@ class Storage:
             # Silently handle history saving errors
             pass
 
+    def delete_history_entry(self, entry_id: int) -> None:
+        """Delete a single history entry by ID."""
+        try:
+            with sqlite3.connect(self.db_path) as con:
+                con.execute("DELETE FROM history WHERE id = ?", (entry_id,))
+                con.commit()
+        except Exception:
+            pass
+    
+    def clear_history(self) -> None:
+        """Clear all history entries."""
+        try:
+            with sqlite3.connect(self.db_path) as con:
+                con.execute("DELETE FROM history")
+                con.execute("DELETE FROM sqlite_sequence WHERE name='history'")
+                con.commit()
+        except Exception:
+            pass
+
     def get_history(self) -> list[dict]:
         """Retrieve the last 10 history entries."""
         try:

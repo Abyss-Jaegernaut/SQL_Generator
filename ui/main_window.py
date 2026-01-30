@@ -67,6 +67,10 @@ class MainWindow(ttk.Frame):
             self.sql_preview_frame._configure_syntax_highlighting()
             self._refresh_outputs()
 
+        # Refresh Manual Buttons (tk.Button)
+        if hasattr(self, 'table_frame'):
+             self.table_frame.update_theme_styles()
+
     def _update_title(self) -> None:
         root = self.winfo_toplevel()
         try:
@@ -152,7 +156,7 @@ class MainWindow(ttk.Frame):
             if not history:
                 messagebox.showinfo("Historique", "L'historique est vide.")
                 return
-            HistoryDialog(self, history)
+            HistoryDialog(self, history, controller=self.controller)
         except Exception as e:
             messagebox.showerror("Erreur", f"Impossible d'accéder à l'historique: {str(e)}")
 
@@ -212,7 +216,13 @@ class MainWindow(ttk.Frame):
                 if not name:
                     return
                 self.controller.set_database_name(name.strip())
+            
+            # Confirmation
+            if not messagebox.askyesno("Confirmer", f"Sauvegarder le projet '{self.controller.current_project.database_name}' ?\nCela écrasera la version précédente."):
+                return
+
             self.controller.save_project()
+            messagebox.showinfo("Succès", "Projet sauvegardé avec succès.")
         except Exception as e:
             messagebox.showerror("Erreur", f"Impossible de sauvegarder le projet: {str(e)}")
 

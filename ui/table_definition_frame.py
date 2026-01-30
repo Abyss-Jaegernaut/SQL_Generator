@@ -30,6 +30,7 @@ class TableDefinitionFrame(ttk.LabelFrame):
         ttk.Entry(self, textvariable=self.db_name_var).grid(
             row=0, column=1, sticky="ew", padx=6, pady=(6, 2)
         )
+        self.db_name_var.trace_add("write", lambda *args: self._apply_to_controller())
 
         ttk.Label(self, text="SGBD").grid(row=1, column=0, sticky="w", padx=6, pady=2)
         self.dbms_var = tk.StringVar(value="SQL Server")
@@ -88,7 +89,7 @@ class TableDefinitionFrame(ttk.LabelFrame):
         self.table_list.pack(fill="both", expand=True)
         self.table_list.bind("<<ListboxSelect>>", self._on_table_select)
         
-        self._update_button_styles()
+        self.update_theme_styles()
 
         # Columns table
         cols = ("name", "type", "nullable", "pk", "identity", "fk")
@@ -114,6 +115,10 @@ class TableDefinitionFrame(ttk.LabelFrame):
         ttk.Button(btns, text="➕ Ajouter", command=self._add_column).pack(side="left")
         ttk.Button(btns, text="✏️ Modifier", command=self._edit_selected).pack(side="left", padx=(6, 0))
         ttk.Button(btns, text="🗑️ Supprimer", command=self._delete_selected).pack(side="left", padx=(6, 0))
+        
+        # Move Buttons
+        ttk.Button(btns, text="⬆️", width=3, command=self._move_column_up).pack(side="left", padx=(15, 0))
+        ttk.Button(btns, text="⬇️", width=3, command=self._move_column_down).pack(side="left", padx=(2, 0))
         # Button removed as everything is now reactive
 
         self.rowconfigure(3, weight=1)
@@ -170,19 +175,27 @@ class TableDefinitionFrame(ttk.LabelFrame):
         sel = self.table_list.curselection()
         return sel[0] if sel else None
 
-    def _update_button_styles(self) -> None:
+    def update_theme_styles(self) -> None:
         """Manually update tk.Button styles to match theme approximately."""
         from ui.theme_manager import ThemeManager
         theme = ThemeManager().current_theme
-        bg = theme.button_bg
+        
+        # Default Dark
+        bg = theme.button_bg 
         fg = theme.fg
+        active_bg = theme.accent
+        active_fg = "#ffffff"
+        
+        # Override for Clair/Light
         if theme.name == "Clair":
-            bg = "#e1e1e1"
+            bg = "#f0f0f0" # Standard Windows Button Face
             fg = "#000000"
+            active_bg = "#e1e1e1"
+            active_fg = "#000000"
         
         try:
-             self.btn_add.configure(bg=bg, fg=fg, activebackground=theme.accent, activeforeground="#ffffff")
-             self.btn_del.configure(bg=bg, fg=fg, activebackground=theme.accent, activeforeground="#ffffff")
+             self.btn_add.configure(bg=bg, fg=fg, activebackground=active_bg, activeforeground=active_fg)
+             self.btn_del.configure(bg=bg, fg=fg, activebackground=active_bg, activeforeground=active_fg)
         except: pass
 
     def _add_tables_bulk(self, initial: bool = False) -> None:
@@ -262,6 +275,33 @@ class TableDefinitionFrame(ttk.LabelFrame):
             
         except Exception as e:
             print(f"DELETE ERROR: {e}")
+
+    def _move_column_up(self) -> None:
+        sel = self.tree.selection()
+        if not sel: return
+        iid = sel[0]
+        idx = self.tree.index(iid)
+        
+        if idx > 0:
+            self.tree.move(iid, "", idx - 1)
+            # Reselect/See
+            self.tree.see(iid)
+            self._apply_to_controller()
+
+    def _move_column_down(self) -> None:
+        sel = self.tree.selection()
+        if not sel: return
+        iid = sel[0]
+        idx = self.tree.index(iid)
+        
+        # Get total items
+        total = len(self.tree.get_children())
+        
+        if idx < total - 1:
+            self.tree.move(iid, "", idx + 1)
+            # Reselect/See
+            self.tree.see(iid)
+            self._apply_to_controller()
 
     def _on_table_select(self, event=None) -> None:
         if getattr(self, "_ignore_select_event", False): return
@@ -383,7 +423,16 @@ class TableDefinitionFrame(ttk.LabelFrame):
             self.on_table_selected(idx)
 
     def _add_column(self) -> None:
-        dlg = _ColumnDialog(self, title="Ajouter une colonne", tables=self.tables)
+        # Find existing PKs and Names
+        existing_pks = []
+        existing_names = []
+        for item in self.tree.get_children():
+            vals = self.tree.item(item, "values")
+            existing_names.append(vals[0])
+            if vals[3] == "YES":
+                existing_pks.append(vals[0])
+
+        dlg = _ColumnDialog(self, title="Ajouter une colonne", tables=self.tables, existing_pks=existing_pks, existing_names=existing_names)
         self.wait_window(dlg)
         if dlg.result is None:
             return
@@ -430,7 +479,17 @@ class TableDefinitionFrame(ttk.LabelFrame):
              current["fk_table"] = ""
              current["fk_col"] = ""
 
-        dlg = _ColumnDialog(self, title="Modifier la colonne", initial=current, tables=self.tables)
+        # Find existing PKs and Names excluding THIS column
+        existing_pks = []
+        existing_names = []
+        for item in self.tree.get_children():
+            if item == iid: continue # Skip self
+            vals = self.tree.item(item, "values")
+            existing_names.append(vals[0])
+            if vals[3] == "YES":
+                existing_pks.append(vals[0])
+
+        dlg = _ColumnDialog(self, title="Modifier la colonne", initial=current, tables=self.tables, existing_pks=existing_pks, existing_names=existing_names)
         self.wait_window(dlg)
         if dlg.result is None:
             return
@@ -483,12 +542,14 @@ class TableDefinitionFrame(ttk.LabelFrame):
 
 
 class _ColumnDialog(tk.Toplevel):
-    def __init__(self, master, *, title: str, initial: dict | None = None, tables: list = None) -> None:
+    def __init__(self, master, *, title: str, initial: dict | None = None, tables: list = None, existing_pks: list[str] = None, existing_names: list[str] = None) -> None:
         super().__init__(master)
         self.title(title)
         self.resizable(False, False)
         self.result: dict | None = None
         self.tables = tables or []
+        self.existing_pks = existing_pks or []
+        self.existing_names = [n.lower() for n in (existing_names or [])] # Store as lower for case-insensitive check
 
         # Center the window
         self.withdraw()  # Hide while calculating
@@ -542,6 +603,10 @@ class _ColumnDialog(tk.Toplevel):
             "VARCHAR(500)",
             "VARCHAR(MAX)",
             "TEXT",
+            "CHAR(10)",
+            "DATE",
+            "DATETIME",
+            "BOOLEAN",
         ]
         type_combo = ttk.Combobox(frame, textvariable=self.type_var, values=type_options, width=24)
         type_combo.grid(row=3, column=0, sticky="ew", pady=(2, 8))
@@ -574,8 +639,10 @@ class _ColumnDialog(tk.Toplevel):
         self.fk_table_cb.pack(side="left", padx=5)
         
         ttk.Label(self.fk_details, text="Col.").pack(side="left")
-        self.fk_col_entry = ttk.Entry(self.fk_details, textvariable=self.fk_col_var, width=10)
-        self.fk_col_entry.pack(side="left", padx=5)
+        self.fk_col_cb = ttk.Combobox(self.fk_details, textvariable=self.fk_col_var, width=12, state="readonly")
+        self.fk_col_cb.pack(side="left", padx=5)
+        
+        self.fk_table_cb.bind("<<ComboboxSelected>>", self._on_fk_table_change)
 
         btns = ttk.Frame(frame)
         btns.grid(row=6, column=0, sticky="e", pady=(10, 0))
@@ -597,13 +664,45 @@ class _ColumnDialog(tk.Toplevel):
         self.transient(master)
         self.grab_set()
 
+        self.transient(master)
+        self.grab_set()
+
+    def _on_fk_table_change(self, event=None) -> None:
+        table_name = self.fk_table_var.get()
+        if not table_name: return
+        
+        # Find target table
+        target = next((t for t in self.tables if t.name == table_name), None)
+        if target:
+            # Update columns list
+            cols = [c.name for c in target.columns]
+            self.fk_col_cb["values"] = cols
+            
+            # Auto-select PK
+            pk = next((c.name for c in target.columns if c.is_primary_key), None)
+            if pk:
+                self.fk_col_var.set(pk)
+            elif cols:
+                self.fk_col_var.set(cols[0])
+
     def _on_pk_toggle(self) -> None:
         if not self.pk_var.get():
             self.identity_var.set(False)
 
     def _on_pk_toggle(self) -> None:
-        """Handle PK toggle: PK implies NOT NULL."""
+        """Handle PK toggle: PK implies NOT NULL and check for Composite Key."""
         is_pk = self.pk_var.get()
+        
+        # Check for Composite Key Warning
+        # Only warn if turning ON, and there are other PKs already
+        if is_pk and self.existing_pks:
+             msg = (f"Une clé primaire existe déjà ({', '.join(self.existing_pks)}).\n\n"
+                    "Voulez-vous ajouter cette colonne à la clé primaire existante (Clé Composite) ?\n"
+                    "Non = Annuler le cochage.")
+             if not messagebox.askyesno("Clé Composite ?", msg):
+                 self.pk_var.set(False)
+                 return
+
         if(is_pk):
             # Disable Nullable and uncheck it
             self.null_var.set(False)
@@ -631,9 +730,21 @@ class _ColumnDialog(tk.Toplevel):
     def _ok(self) -> None:
         name = self.name_var.get().strip()
         sql_type = self.type_var.get().strip()
+        
+        # Sanitize name (No spaces allowed in standard SQL identifiers usually)
+        if " " in name:
+            name = name.replace(" ", "_").replace("-", "_")
+
         if not name:
             messagebox.showerror("Erreur", "Le nom de colonne est obligatoire.")
             return
+
+        # Check duplicate name
+        if name.lower() in self.existing_names:
+            # If editing, we excluded self from existing_names, so presence means conflict
+            messagebox.showerror("Erreur", f"Une colonne nommée '{name}' existe déjà.")
+            return
+            
         if not sql_type:
             messagebox.showerror("Erreur", "Le type SQL est obligatoire.")
             return

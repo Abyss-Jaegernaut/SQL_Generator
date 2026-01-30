@@ -1,8 +1,23 @@
 # Historique des Versions - SQL Generator CRUD
 
-## v1.3.0 - La Mise à Jour "Data Intelligence" (Actuelle)
+## v1.3.1 - La Mise à Jour "Quality of Life" (Actuelle)
 **Date :** Janvier 2026
 **Statut :** Stable
+**Description :** Une série de correctifs ergonomiques et visuels basés sur les retours utilisateurs pour polir l'expérience v1.3.
+
+### 🎨 & Ergonomie
+- **Thèmes** : Correction définitive de l'illisibilité des listes déroulantes (SGBD) dans les thèmes sombres.
+- **Ajout Colonne** : Fenêtre compactée et stylisée (plus d'espace vide blanc en bas).
+- **Validation** : Les espaces dans les noms de colonnes sont automatiquement remplacés par des tirets bas `_` pour garantir un SQL valide.
+- **Types SQL** : Ajout explicite de `CHAR`, `DATE`, `DATETIME`, `BOOLEAN` dans la liste des choix.
+
+### 💾 Gestion
+- **Sécurité** : Demande de confirmation explicite avant d'écraser un projet existant.
+- **Nettoyage** : Ajout d'un bouton pour vider intégralement l'historique des générations.
+
+---
+
+## v1.3.0 - La Mise à Jour "Data Intelligence"
 **Description :** Introduction majeure de la génération automatique de données et consolidation de l'architecture de sécurité.
 
 ### ✨ Nouvelles Fonctionnalités

@@ -7,8 +7,9 @@ from tkinter import ttk
 class HistoryDialog(tk.Toplevel):
     """Dialog to view last 10 generated SQL scripts."""
 
-    def __init__(self, master, history: list[dict]) -> None:
+    def __init__(self, master, history: list[dict], controller=None) -> None:
         super().__init__(master)
+        self.controller = controller
         self.title("Historique des Générations")
         self.geometry("900x600")
         self.minsize(800, 500)
@@ -50,6 +51,12 @@ class HistoryDialog(tk.Toplevel):
         
         self.tree.pack(fill="both", expand=True)
         self.tree.bind("<<TreeviewSelect>>", self._on_select)
+        
+        if self.controller and self.controller.is_activated():
+            btn_box = ttk.Frame(left_frame)
+            btn_box.pack(fill="x", pady=(5, 0))
+            ttk.Button(btn_box, text="Supprimer sélection", command=self._delete_selected).pack(side="left", fill="x", expand=True, padx=(0, 2))
+            ttk.Button(btn_box, text="🗑️ Vider tout", command=self._on_clear).pack(side="left", fill="x", expand=True, padx=(2, 0))
 
         # Right: SQL Preview
         right_frame = ttk.LabelFrame(paned, text="Contenu SQL")
@@ -63,6 +70,9 @@ class HistoryDialog(tk.Toplevel):
         self.text.pack(side="top", fill="both", expand=True)
         vsb.pack(side="right", fill="y")
         hsb.pack(side="bottom", fill="x")
+        
+        # Copy Button
+        ttk.Button(right_frame, text="📄 Copier le SQL", command=self._copy_sql).pack(anchor="e", pady=5)
         
         self.text.configure(state="disabled")
 
@@ -88,4 +98,45 @@ class HistoryDialog(tk.Toplevel):
             self.text.configure(state="normal")
             self.text.delete("1.0", tk.END)
             self.text.insert(tk.END, entry["sql_content"])
+            self.text.insert(tk.END, entry["sql_content"])
             self.text.configure(state="disabled")
+
+    def _copy_sql(self) -> None:
+        content = self.text.get("1.0", tk.END).strip()
+        if content:
+            self.clipboard_clear()
+            self.clipboard_append(content)
+            self.update()
+            tk.messagebox.showinfo("Copié", "SQL copié dans le presse-papier.")
+
+    def _delete_selected(self) -> None:
+        selection = self.tree.selection()
+        if not selection:
+            tk.messagebox.showinfo("Info", "Veuillez sélectionner une entrée.")
+            return
+
+        item = self.tree.item(selection[0])
+        entry_id = item["values"][0] # ID is first column
+        
+        if tk.messagebox.askyesno("Confirmer", "Supprimer cette entrée ?"):
+            self.controller.delete_history_entry(entry_id)
+            self.tree.delete(selection[0])
+            self.text.configure(state="normal")
+            self.text.delete("1.0", tk.END)
+            self.text.configure(state="disabled")
+            
+            # Remove from local list
+            self.history = [h for h in self.history if h["id"] != entry_id]
+
+    def _on_clear(self) -> None:
+        if not self.controller: return
+        
+        if tk.messagebox.askyesno("Confirmation", "Voulez-vous vraiment effacer tout l'historique ?\nCette action est irréversible."):
+            self.controller.clear_history()
+            # Clear UI
+            self.tree.delete(*self.tree.get_children())
+            self.text.configure(state="normal")
+            self.text.delete("1.0", tk.END)
+            self.text.configure(state="disabled")
+            self.history = []
+            tk.messagebox.showinfo("Succès", "Historique effacé.")

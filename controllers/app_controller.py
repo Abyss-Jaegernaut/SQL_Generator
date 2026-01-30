@@ -117,6 +117,12 @@ class AppController:
     def add_to_history(self, sql_content: str) -> None:
         self.storage.add_history(self.current_project.database_name, sql_content)
 
+    def delete_history_entry(self, entry_id: int) -> None:
+        self.storage.delete_history_entry(entry_id)
+
+    def clear_history(self) -> None:
+        self.storage.clear_history()
+
     def get_history(self) -> list[dict]:
         return self.storage.get_history()
 

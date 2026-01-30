@@ -1,5 +1,5 @@
 {
-  "version": "1.3.1",
+  "version": "1.3.2",
   "url": "https://github.com/Abyss-Jaegernaut/SQL_Generator/releases",
   "last_check": "2026-01-30",
   "changelog": [
@@ -7,7 +7,8 @@
     "- ✨ Ergonomie : Suppression de l'espace vide inutile dans l'ajout de colonne",
     "- 🛡️ Validation : Interdiction des espaces et des noms de colonnes dupliqués",
     "- ✨ Types : Ajout explicite de CHAR, DATE, DATETIME, BOOLEAN",
-    "- ⬆️ Ergonomie : Réorganisation des colonnes (Monter/Descendre)",
+    "- ⬆️ Ergonomie : Réorganisation compacte des boutons",
+    "- 📱 Responsive : Barra de défilement (Scrollbar) pour les champs de saisie (Support petits écrans)",
     "- 🧠 Ergonomie : Autocomplétion intelligente de la cible FK (Table -> PK)",
     "- 💾 Sécurité : Demande de confirmation avant écrasement de projet",
     "- 🗑️ Historique : Suppression sélective, Copie SQL, Vider tout"

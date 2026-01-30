@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import re
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import filedialog, messagebox, ttk
 
 from controllers.app_controller import AppController
 from core import models
@@ -114,11 +115,12 @@ class TableDefinitionFrame(ttk.LabelFrame):
         btns.grid(row=4, column=1, columnspan=1, sticky="ew", padx=6, pady=(0, 6))
         ttk.Button(btns, text="➕ Ajouter", command=self._add_column).pack(side="left")
         ttk.Button(btns, text="✏️ Modifier", command=self._edit_selected).pack(side="left", padx=(6, 0))
-        ttk.Button(btns, text="🗑️ Supprimer", command=self._delete_selected).pack(side="left", padx=(6, 0))
         
-        # Move Buttons
-        ttk.Button(btns, text="⬆️", width=3, command=self._move_column_up).pack(side="left", padx=(15, 0))
+        # Move Buttons (Middle)
+        ttk.Button(btns, text="⬆️", width=3, command=self._move_column_up).pack(side="left", padx=(6, 0))
         ttk.Button(btns, text="⬇️", width=3, command=self._move_column_down).pack(side="left", padx=(2, 0))
+        
+        ttk.Button(btns, text="🗑️ Supprimer", command=self._delete_selected).pack(side="left", padx=(6, 0))
         # Button removed as everything is now reactive
 
         self.rowconfigure(3, weight=1)
@@ -380,7 +382,18 @@ class TableDefinitionFrame(ttk.LabelFrame):
                 )
             
             # Save to the active slot
-            new_name = self.table_name_var.get().strip() or self.tables[idx].name
+            raw_name = self.table_name_var.get().strip()
+            
+            # Sanitize table name
+            clean_name = re.sub(r'[^a-zA-Z0-9_]', '_', raw_name)
+            while "__" in clean_name: clean_name = clean_name.replace("__", "_")
+            clean_name = clean_name.strip("_")
+            
+            # Update UI if changed (feedback for user)
+            if raw_name != clean_name:
+                self.table_name_var.set(clean_name)
+            
+            new_name = clean_name or self.tables[idx].name
             self.tables[idx] = models.TableModel(name=new_name, columns=cols, rows=self.tables[idx].rows)
             
             # Update listbox text only if changed
@@ -395,7 +408,8 @@ class TableDefinitionFrame(ttk.LabelFrame):
                 finally:
                     self._ignore_select_event = False
         except Exception as e:
-            # Never block UI logic because of persistence error
+            # Show error to user to debug silent failures
+            messagebox.showerror("Erreur Interne", f"Erreur lors de la sauvegarde de la table : {e}")
             print(f"Error persisting form: {e}")
 
     def _load_table_into_form(self, idx: int) -> None:
@@ -554,8 +568,8 @@ class _ColumnDialog(tk.Toplevel):
         # Center the window
         self.withdraw()  # Hide while calculating
         self.update_idletasks()
-        w = 340
-        h = 520 # Increased to fit FK fields and buttons
+        w = 420 # Increased width for buttons
+        h = 440 # Reduced height (optimized)
         ws = self.winfo_screenwidth()
         hs = self.winfo_screenheight()
         hs = self.winfo_screenheight()
@@ -732,8 +746,12 @@ class _ColumnDialog(tk.Toplevel):
         sql_type = self.type_var.get().strip()
         
         # Sanitize name (No spaces allowed in standard SQL identifiers usually)
-        if " " in name:
-            name = name.replace(" ", "_").replace("-", "_")
+        # Sanitize name (Keep only A-Z, 0-9, _)
+        import re
+        name = re.sub(r'[^a-zA-Z0-9_]', '_', name)
+        while "__" in name:
+            name = name.replace("__", "_")
+        name = name.strip("_") # Remove leading/trailing underscores
 
         if not name:
             messagebox.showerror("Erreur", "Le nom de colonne est obligatoire.")

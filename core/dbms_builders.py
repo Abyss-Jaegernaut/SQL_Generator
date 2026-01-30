@@ -6,7 +6,12 @@ from core import models, rules
 
 def format_value(value: str, sql_type: str, dbms: str) -> str:
     """Format a value for use in an INSERT statement based on its type."""
-    if value is None or value.upper() == "NULL" or value == "(AUTO)":
+    # Handle basic NULL cases
+    if value is None:
+        return "NULL"
+    
+    val_str = str(value).strip()
+    if not val_str or val_str.upper() == "NULL" or val_str == "(AUTO)":
         return "NULL"
     
     t = sql_type.upper()
@@ -92,7 +97,7 @@ def build_create_table_statement(table: models.TableModel, dbms: str) -> str:
             constraints.append(f"CONSTRAINT {fk_name_q} FOREIGN KEY ({col_name_q}) REFERENCES {ref_table_q} ({ref_col_q})")
     
     if constraints:
-        lines.append("")
+        # lines.append("") # REMOVED: Caused double comma issue with join
         for c in constraints:
             lines.append(f"    {c}")
     

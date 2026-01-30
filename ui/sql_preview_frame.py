@@ -20,6 +20,7 @@ class SQLPreviewFrame(ttk.LabelFrame):
         ttk.Button(toolbar, text="📋 Copier", command=self.copy_all).pack(side="left")
         ttk.Button(toolbar, text="💾 Exporter .sql", command=self.export_sql).pack(side="left", padx=(6, 0))
         ttk.Button(toolbar, text="📜 Sauvegarder dans l'historique", command=self._save_to_history).pack(side="left", padx=(6, 0))
+        ttk.Button(toolbar, text="☑️ Tout cocher", command=self._select_all).pack(side="left", padx=(6, 0))
 
         # Actions area (Split into 2 rows for better fit)
         actions_frame = ttk.Frame(self)
@@ -35,8 +36,6 @@ class SQLPreviewFrame(ttk.LabelFrame):
         for name, var in items[:3]:
             # Standard tk.Checkbutton
             tk.Checkbutton(row1, text=name, variable=var, command=self.on_actions_changed, font=("Segoe UI", 9)).pack(side="left", padx=2)
-
-        ttk.Button(row1, text="Tout", width=6, command=self._select_all).pack(side="left", padx=(10, 0))
 
         # Row 2: Procedures
         row2 = ttk.Frame(actions_frame)

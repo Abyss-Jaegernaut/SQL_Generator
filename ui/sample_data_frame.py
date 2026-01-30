@@ -30,8 +30,27 @@ class SampleDataFrame(ttk.LabelFrame):
         self.input_frame.grid(row=0, column=0, sticky="ew", padx=4, pady=4)
         
         # We will dynamically populate input_frame based on columns.
-        self.inputs_inner = ttk.Frame(self.input_frame)
-        self.inputs_inner.pack(fill="x", padx=4, pady=4)
+        # Scrollable container for inputs
+        container = ttk.Frame(self.input_frame)
+        container.pack(fill="x", expand=True, padx=4, pady=4)
+        
+        self.canvas = tk.Canvas(container, height=135, highlightthickness=0) # Fix height ~3 rows
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=self.canvas.yview)
+        
+        self.inputs_inner = ttk.Frame(self.canvas)
+        self.inputs_inner.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        )
+        
+        self.canvas_window = self.canvas.create_window((0, 0), window=self.inputs_inner, anchor="nw")
+        self.canvas.configure(yscrollcommand=scrollbar.set)
+        
+        self.canvas.pack(side="left", fill="x", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Resize inner frame to match canvas width
+        self.canvas.bind("<Configure>", self._on_canvas_configure)
         
         btn_frame = ttk.Frame(self.input_frame)
         btn_frame.pack(fill="x", padx=4, pady=(0, 4))
@@ -104,10 +123,16 @@ class SampleDataFrame(ttk.LabelFrame):
             ent = ttk.Entry(frame, textvariable=var, width=20)
             ent.pack(fill="x")
             
+            # Responsive Grid: Give weight to columns so they fill space
+            self.inputs_inner.columnconfigure(c, weight=1) 
+            
             c += 1
-            if c > 3: # wrap
+            if c > 5: # wrap after 6 items (0-5)
                 c = 0
                 r += 1
+
+        # Spacer removed to allow fill
+        # self.inputs_inner.columnconfigure(10, weight=1)
         
         self.submit_btn.configure(text="✅ Ajouter ligne")
         
@@ -218,6 +243,10 @@ class SampleDataFrame(ttk.LabelFrame):
         self.submit_btn.configure(text="✅ Ajouter ligne")
         for v in self.entry_vars.values():
             v.set("")
+
+    def _on_canvas_configure(self, event) -> None:
+        """Ensure the inner frame fills the canvas width."""
+        self.canvas.itemconfig(self.canvas_window, width=event.width)
 
     def _delete_selected_row(self) -> None:
         selection = self.tree.selection()

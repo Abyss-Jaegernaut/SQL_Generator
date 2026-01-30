@@ -88,7 +88,8 @@ class LicensePage(ttk.Frame):
         btn_frame = ttk.Frame(container)
         btn_frame.pack(pady=10)
 
-        ttk.Button(btn_frame, text="Activer la Licence", command=self._activate, width=20).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="🚀 Activer Premium", command=self._activate, width=20).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Version Standard (Gratuite)", command=self._use_standard, width=25).pack(side="left", padx=5)
         
         # Add exit button
         ttk.Button(btn_frame, text="Quitter", command=lambda: self.master.destroy(), width=10).pack(side="left", padx=5)
@@ -131,3 +132,18 @@ class LicensePage(ttk.Frame):
                 messagebox.showerror("Erreur", "Clé de licence invalide.")
         except Exception as e:
             messagebox.showerror("Erreur", f"Erreur d'activation: {e}")
+
+    def _use_standard(self) -> None:
+        """Allow entry without activation."""
+        confirm = messagebox.askyesno(
+            "Version Standard", 
+            "Vous allez utiliser la version Standard.\n\n"
+            "⚠️ Limitations :\n"
+            "- Accès uniquement au thème Clair\n"
+            "- Pas de support Premium\n\n"
+            "Voulez-vous continuer ?"
+        )
+        if confirm:
+            self.success = True
+            if self.on_success:
+                self.on_success()

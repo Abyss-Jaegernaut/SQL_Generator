@@ -32,6 +32,17 @@ class MainWindow(ttk.Frame):
         self._update_title()
         self._build_menu()
         self._build_layout()
+        
+        # FORCE THEME APPLICATION AFTER UI BUILD
+        # This fixes the glitch where some widgets (like Listbox background) 
+        # keep standard colors if theme is dark.
+        saved_theme = self.controller.get_theme()
+        # If theme is not Clair and not premium, force fallback (though get_theme might return saved)
+        if saved_theme != "Clair" and not self.controller.is_activated():
+            saved_theme = "Clair"
+        
+        self.theme_manager.apply_theme(saved_theme, self.winfo_toplevel())
+        
         self._refresh_outputs()
 
     def _setup_style(self) -> None:
@@ -41,6 +52,13 @@ class MainWindow(ttk.Frame):
 
     def _change_theme(self, theme_name: str) -> None:
         """Change application theme and save preference."""
+        if theme_name != "Clair" and not self.controller.is_activated():
+            if messagebox.askyesno("Premium Requis", 
+                f"Le thème '{theme_name}' est réservé à la version Premium.\n\n"
+                "Souhaitez-vous activer votre licence maintenant pour y accéder ?"):
+                self._show_license()
+            return
+
         self.controller.set_theme(theme_name)
         self.theme_manager.apply_theme(theme_name, self.winfo_toplevel())
         
@@ -52,9 +70,9 @@ class MainWindow(ttk.Frame):
     def _update_title(self) -> None:
         root = self.winfo_toplevel()
         try:
-            status = "PREMIUM" if self.controller.is_activated() else "VERSION D'ÉVALUATION"
+            status = "PREMIUM" if self.controller.is_activated() else "STANDARD (Gratuit)"
         except Exception:
-            status = "VERSION D'ÉVALUATION"
+            status = "STANDARD"
         
         from version import VERSION
         root.title(f"SQL Generator CRUD {VERSION} - {status}")
@@ -83,8 +101,9 @@ class MainWindow(ttk.Frame):
 
         theme_menu = tk.Menu(menubar, tearoff=False)
         for theme_name in THEMES:
+            prefix = "🔒 " if theme_name != "Clair" and not self.controller.is_activated() else ""
             theme_menu.add_command(
-                label=theme_name, 
+                label=f"{prefix}{theme_name}", 
                 command=lambda t=theme_name: self._change_theme(t)
             )
 
@@ -145,6 +164,7 @@ class MainWindow(ttk.Frame):
 
         self.sql_preview_frame = SQLPreviewFrame(
             master=self, 
+            controller=self.controller,
             actions_vars=self.actions_vars, 
             on_actions_changed=self._refresh_outputs,
             on_save_history=self.controller.add_to_history

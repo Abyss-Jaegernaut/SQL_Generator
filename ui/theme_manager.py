@@ -205,6 +205,21 @@ class ThemeManager:
                         selectbackground=theme.accent,
                         padding=5)
 
+        # TSpinbox
+        style.configure("TSpinbox", 
+                        fieldbackground=theme.input_bg, 
+                        background=theme.input_bg,
+                        foreground=theme.fg, 
+                        arrowcolor=theme.fg, 
+                        bordercolor=theme.border,
+                        lightcolor=theme.border,
+                        darkcolor=theme.border,
+                        padding=2)
+        style.map("TSpinbox",
+                  fieldbackground=[('readonly', theme.input_bg)],
+                  background=[('readonly', theme.input_bg)],
+                  foreground=[('readonly', theme.fg)])
+
         # Treeview
         style.configure("Treeview", 
                         background=theme.tree_bg, 
@@ -267,13 +282,13 @@ class ThemeManager:
                 widget.configure(bg=theme.bg, highlightthickness=0)
             elif classname == "Listbox":
                 widget.configure(
-                    bg=theme.input_bg, 
+                    bg=theme.input_bg, # Pure white for Clair
                     fg=theme.fg, 
                     selectbackground=theme.accent, 
                     selectforeground="#ffffff",
                     highlightthickness=1,
                     highlightbackground=theme.border,
-                    relief="flat",
+                    relief="flat" if theme.name != "Clair" else "sunken",
                     font=("Segoe UI", 10)
                 )
             elif classname == "Checkbutton":

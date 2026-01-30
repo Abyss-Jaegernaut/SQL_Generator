@@ -78,6 +78,24 @@ def build_create_table_statement(table: models.TableModel, dbms: str) -> str:
     # Table name quoting
     table_name = _quote_identifier(table.name, dbms)
     
+    # Collect FKs
+    constraints = []
+    for col in table.columns:
+        if col.foreign_key_table and col.foreign_key_column:
+            fk_name = f"FK_{table.name}_{col.name}"
+            # Quote everything
+            fk_name_q = _quote_identifier(fk_name, dbms)
+            col_name_q = _quote_identifier(col.name, dbms)
+            ref_table_q = _quote_identifier(col.foreign_key_table, dbms)
+            ref_col_q = _quote_identifier(col.foreign_key_column, dbms)
+            
+            constraints.append(f"CONSTRAINT {fk_name_q} FOREIGN KEY ({col_name_q}) REFERENCES {ref_table_q} ({ref_col_q})")
+    
+    if constraints:
+        lines.append("")
+        for c in constraints:
+            lines.append(f"    {c}")
+    
     columns_sql = ",\n".join(lines)
     
     if dbms == "sqlserver":

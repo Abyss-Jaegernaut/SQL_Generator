@@ -8,8 +8,9 @@ from tkinter import filedialog, messagebox, ttk
 class SQLPreviewFrame(ttk.LabelFrame):
     """Shows generated SQL scripts with action toggles."""
 
-    def __init__(self, master, actions_vars: dict[str, tk.BooleanVar], on_actions_changed, on_save_history=None) -> None:
+    def __init__(self, master, controller, actions_vars: dict[str, tk.BooleanVar], on_actions_changed, on_save_history=None) -> None:
         super().__init__(master, text="Aperçu SQL")
+        self.controller = controller
         self.actions_vars = actions_vars
         self.on_actions_changed = on_actions_changed
         self.on_save_history = on_save_history
@@ -119,6 +120,10 @@ class SQLPreviewFrame(ttk.LabelFrame):
             self.text.tag_add("identifier", start_idx, end_idx)
 
     def _save_to_history(self) -> None:
+        if not self.controller.is_activated():
+            messagebox.showinfo("Premium Requis", "La sauvegarde de s'historique est une fonctionnalité Premium.")
+            return
+
         if not self._last_sql.strip():
             return
         if self.on_save_history:
@@ -133,6 +138,10 @@ class SQLPreviewFrame(ttk.LabelFrame):
         messagebox.showinfo("Copié", "SQL copié dans le presse-papiers.")
 
     def export_sql(self) -> None:
+        if not self.controller.is_activated():
+            messagebox.showinfo("Premium Requis", "L'exportation en fichier .sql est réservée aux utilisateurs Premium.\n\nVous pouvez copier le code dans le presse-papier gratuitement.")
+            return
+
         if not self._last_sql.strip():
             return
         path = filedialog.asksaveasfilename(

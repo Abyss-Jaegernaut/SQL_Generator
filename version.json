@@ -1,5 +1,5 @@
 {
-  "version": "1.2.2",
+  "version": "1.2.3",
   "url": "https://github.com/Abyss-Jaegernaut/SQL_Generator/releases",
-  "changelog": "Intégration des thèmes premium (Abyss, Sombre, Violet, Orange, Jaune) et système de mise à jour automatique."
+  "changelog": "Ajout du mode Standard (Gratuit), restrictions Premium (Export, Historique, Ajout masse) et correctifs UI."
 }

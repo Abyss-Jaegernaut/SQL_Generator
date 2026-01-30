@@ -53,33 +53,59 @@ class TableDefinitionFrame(ttk.LabelFrame):
         # Table list (multi-table)
         left = ttk.Frame(self)
         left.grid(row=3, column=0, sticky="nsw", padx=(6, 6), pady=(6, 6))
+        # Container for Listbox and Action buttons
+        left.grid_rowconfigure(2, weight=0)
+        left.grid_rowconfigure(0, weight=1)
+        
         ttk.Label(left, text="Tables").pack(anchor="w")
-        self.table_list = tk.Listbox(left, height=8, exportselection=False)
-        self.table_list.pack(fill="y", expand=False)
-        self.table_list.bind("<<ListboxSelect>>", self._on_table_select)
 
-        add_frame = ttk.Frame(left)
-        add_frame.pack(fill="x", pady=(4, 0))
-        ttk.Label(add_frame, text="Nb").pack(side="left")
+        # Actions Frame (Pack FIRST at BOTTOM to guarantee visibility)
+        actions_frame = ttk.Frame(left)
+        actions_frame.pack(side="bottom", fill="x", pady=(5, 0))
+        
+        # Row 1: Nb + Spinbox + Ajouter Button
+        row_add = ttk.Frame(actions_frame)
+        row_add.pack(fill="x")
+        
+        ttk.Label(row_add, text="Nb").pack(side="left")
+        
         self.bulk_count = tk.IntVar(value=1)
-        ttk.Spinbox(add_frame, from_=1, to=20, textvariable=self.bulk_count, width=4).pack(side="left", padx=(2, 6))
-        ttk.Button(add_frame, text="Ajouter", command=self._add_tables_bulk).pack(side="left")
-        ttk.Button(left, text="Supprimer table", command=self._delete_table).pack(fill="x", pady=(4, 0))
+        sb = ttk.Spinbox(row_add, from_=1, to=20, textvariable=self.bulk_count, width=3)
+        sb.pack(side="left", padx=(5, 5))
+        
+        self.btn_add = tk.Button(row_add, text="Ajouter", command=self._add_tables_bulk, bg="#f0f0f0", relief="raised")
+        self.btn_add.pack(side="left", fill="x", expand=True)
+        
+        # Row 2: Delete Button
+        self.btn_del = tk.Button(actions_frame, text="Supprimer table", command=self._delete_table, bg="#f0f0f0", relief="raised")
+        self.btn_del.pack(fill="x", pady=(5, 0))
+        
+        # Frame for Listbox (Pack LAST to fill remaining space)
+        list_frame = ttk.Frame(left)
+        list_frame.pack(side="top", fill="both", expand=True, pady=2)
+        
+        self.table_list = tk.Listbox(list_frame, height=11, exportselection=False)
+        self.table_list.pack(fill="both", expand=True)
+        self.table_list.bind("<<ListboxSelect>>", self._on_table_select)
+        
+        self._update_button_styles()
 
         # Columns table
-        cols = ("name", "type", "nullable", "pk", "identity")
+        cols = ("name", "type", "nullable", "pk", "identity", "fk")
         self.tree = ttk.Treeview(self, columns=cols, show="headings", height=9, selectmode="browse")
         self.tree.heading("name", text="Colonne")
         self.tree.heading("type", text="Type SQL")
         self.tree.heading("nullable", text="NULL")
         self.tree.heading("pk", text="PK")
         self.tree.heading("identity", text="AUTO INCREMENT")
+        self.tree.heading("fk", text="F.KEY (Ref)")
 
-        self.tree.column("name", width=140, anchor="w")
-        self.tree.column("type", width=120, anchor="w")
-        self.tree.column("nullable", width=60, anchor="center")
-        self.tree.column("pk", width=45, anchor="center")
+        self.tree.column("name", width=120, anchor="w")
+        self.tree.column("type", width=110, anchor="w")
+        self.tree.column("nullable", width=50, anchor="center")
+        self.tree.column("pk", width=40, anchor="center")
         self.tree.column("identity", width=105, anchor="center")
+        self.tree.column("fk", width=120, anchor="w")
 
         self.tree.grid(row=3, column=1, columnspan=1, sticky="nsew", padx=6, pady=(6, 6))
 
@@ -122,7 +148,7 @@ class TableDefinitionFrame(ttk.LabelFrame):
             self._active_index = 0
             self._load_table_into_form(0)
 
-    def _insert_row(self, name: str, sql_type: str, *, nullable: bool, pk: bool, identity: bool) -> None:
+    def _insert_row(self, name: str, sql_type: str, *, nullable: bool, pk: bool, identity: bool, fk_info: str = "") -> None:
         self.tree.insert(
             "",
             "end",
@@ -132,6 +158,7 @@ class TableDefinitionFrame(ttk.LabelFrame):
                 "YES" if nullable else "NO",
                 "YES" if pk else "NO",
                 "YES" if identity else "NO",
+                fk_info
             ),
         )
 
@@ -143,86 +170,193 @@ class TableDefinitionFrame(ttk.LabelFrame):
         sel = self.table_list.curselection()
         return sel[0] if sel else None
 
-    def _add_tables_bulk(self, initial: bool = False) -> None:
-        count = self.bulk_count.get() if not initial else 1
-        start_index = len(self.tables)
-        for i in range(count):
-            name = f"table{start_index + i + 1}"
-            table = models.TableModel(name=name, columns=[models.ColumnModel(name="id", sql_type="INT", nullable=False, is_primary_key=True, is_auto_increment=False)])
-            self.tables.append(table)
-            self.table_list.insert("end", name)
+    def _update_button_styles(self) -> None:
+        """Manually update tk.Button styles to match theme approximately."""
+        from ui.theme_manager import ThemeManager
+        theme = ThemeManager().current_theme
+        bg = theme.button_bg
+        fg = theme.fg
+        if theme.name == "Clair":
+            bg = "#e1e1e1"
+            fg = "#000000"
         
-        if not initial:
-            self._apply_to_controller()
-            
-        if initial:
-            self.table_list.selection_set(0)
-            self._active_index = 0
-            self._load_table_into_form(0)
+        try:
+             self.btn_add.configure(bg=bg, fg=fg, activebackground=theme.accent, activeforeground="#ffffff")
+             self.btn_del.configure(bg=bg, fg=fg, activebackground=theme.accent, activeforeground="#ffffff")
+        except: pass
+
+    def _add_tables_bulk(self, initial: bool = False) -> None:
+        try:
+            # 1. Safe get count
+            try:
+                count = self.bulk_count.get()
+                if count < 1: count = 1
+            except:
+                count = 1
+
+            # 2. Premium Check
+            if not initial and count > 1 and not self.controller.is_activated():
+                messagebox.showinfo("Premium Requis", "L'ajout groupé est limité à 1 table en version Standard.")
+                count = 1
+                self.bulk_count.set(1)
+
+            # 3. Save previous state if possible (safe)
+            if not initial:
+                self._safe_persist()
+
+            # 4. Generate & Add
+            for i in range(count):
+                new_name = self._generate_unique_name()
+                # Create standard table with ID
+                t = models.TableModel(name=new_name, columns=[
+                    models.ColumnModel(name="id", sql_type="INT", nullable=False, is_primary_key=True, is_auto_increment=False)
+                ])
+                self.tables.append(t)
+                self.table_list.insert("end", new_name)
+
+            # 5. Update Controller & Selection
+            if not initial:
+                self._apply_to_controller()
+                # Select the last added table
+                new_idx = len(self.tables) - 1
+                self._select_index_safely(new_idx)
+
+            if initial:
+                self._select_index_safely(0)
+                
+        except Exception as e:
+            print(f"ADD ERROR: {e}")
+            messagebox.showerror("Erreur", f"Impossible d'ajouter la table: {e}")
+
+    def _generate_unique_name(self) -> str:
+        base = "table"
+        idx = len(self.tables) + 1
+        name = f"{base}{idx}"
+        existing = {t.name for t in self.tables}
+        while name in existing:
+            idx += 1
+            name = f"{base}{idx}"
+        return name
 
     def _delete_table(self) -> None:
-        idx = self._active_index
-        if idx is None:
-            return
-        if len(self.tables) <= 1:
-            messagebox.showinfo("Info", "Il doit rester au moins une table.")
-            return
-        # If possible, save current form state before deleting? 
-        # Actually no, we are deleting it, so no need to save.
-        
-        del self.tables[idx]
-        self.table_list.delete(idx)
-        
-        new_index = min(idx, len(self.tables) - 1)
-        self.table_list.selection_clear(0, "end")
-        self.table_list.selection_set(new_index)
-        
-        self._active_index = new_index
-        self._load_table_into_form(new_index)
-        self._apply_to_controller()
+        try:
+            idx = self._active_index
+            if idx is None:
+                # Try to get from listbox selection directly
+                sel = self.table_list.curselection()
+                if sel: idx = sel[0]
+            
+            if idx is None: return
+
+            if len(self.tables) <= 1:
+                messagebox.showinfo("Info", "Vous devez garder au moins une table.")
+                return
+
+            del self.tables[idx]
+            self.table_list.delete(idx)
+            
+            # Select neighbor
+            new_idx = idx if idx < len(self.tables) else len(self.tables) - 1
+            self._select_index_safely(new_idx)
+            self._apply_to_controller()
+            
+        except Exception as e:
+            print(f"DELETE ERROR: {e}")
 
     def _on_table_select(self, event=None) -> None:
-        # First, save the PREVIOUSLY active table from the current form
-        self._persist_current_form()
-        
-        # Now switch to the NEW selection
-        idx = self._current_table_index()
-        if idx is None:
-            return
-        self._active_index = idx
-        self._load_table_into_form(idx)
+        if getattr(self, "_ignore_select_event", False): return
+
+        try:
+            # Save OLD active table logic
+            self._safe_persist()
+
+            # Load NEW logic
+            sel = self.table_list.curselection()
+            if not sel: return
+            
+            idx = sel[0]
+            self._active_index = idx
+            self._load_table_into_form(idx)
+        except Exception as e:
+            print(f"SELECT ERROR: {e}")
+
+    def _select_index_safely(self, idx: int) -> None:
+        self._ignore_select_event = True
+        try:
+            self.table_list.selection_clear(0, "end")
+            if 0 <= idx < self.table_list.size():
+                self.table_list.selection_set(idx)
+                self.table_list.activate(idx)
+                self.table_list.see(idx)
+                self._active_index = idx
+                self._load_table_into_form(idx)
+        finally:
+            self._ignore_select_event = False
+
+    def _safe_persist(self) -> None:
+        """Non-blocking persist."""
+        try:
+            self._persist_current_form()
+        except:
+            pass
 
     def _persist_current_form(self) -> None:
-        idx = self._active_index
-        if idx is None or idx >= len(self.tables):
-            return
-        cols = []
-        for iid in self.tree.get_children():
-            name, sql_type, nullable, pk, identity = self.tree.item(iid, "values")
-            cols.append(
-                models.ColumnModel(
-                    name=name,
-                    sql_type=sql_type,
-                    nullable=(nullable == "YES"),
-                    is_primary_key=(pk == "YES"),
-                    is_auto_increment=(identity == "YES"),
+        try:
+            idx = self._active_index
+            if idx is None or idx >= len(self.tables):
+                return
+            cols = []
+            for iid in self.tree.get_children():
+                # Safe read
+                values = self.tree.item(iid, "values")
+                if not values: continue
+                
+                name = values[0]
+                sql_type = values[1]
+                nullable = (values[2] == "YES")
+                pk = (values[3] == "YES")
+                identity = (values[4] == "YES")
+                fk_txt = values[5] if len(values) > 5 else ""
+                
+                fk_table, fk_col = None, None
+                if fk_txt and "(" in fk_txt and ")" in fk_txt:
+                    try:
+                        clean = fk_txt.replace("Ref: ", "").strip()
+                        split = clean.split("(")
+                        fk_table = split[0]
+                        fk_col = split[1].strip(")")
+                    except: pass
+                    
+                cols.append(
+                    models.ColumnModel(
+                        name=name,
+                        sql_type=sql_type,
+                        nullable=nullable,
+                        is_primary_key=pk,
+                        is_auto_increment=identity,
+                        foreign_key_table=fk_table,
+                        foreign_key_column=fk_col
+                    )
                 )
-            )
-        # Save to the active slot
-        new_name = self.table_name_var.get().strip() or self.tables[idx].name
-        self.tables[idx] = models.TableModel(name=new_name, columns=cols, rows=self.tables[idx].rows)
-        
-        # Update listbox text only if changed
-        current_text = self.table_list.get(idx)
-        if current_text != new_name:
-            # We need to preserve selection if it's on this item or another
-            # But changing the listbox while generic events are firing is tricky.
-            # Minimal approach:
-            was_selected = (self._current_table_index() == idx)
-            self.table_list.delete(idx)
-            self.table_list.insert(idx, new_name)
-            if was_selected:
-                self.table_list.selection_set(idx)
+            
+            # Save to the active slot
+            new_name = self.table_name_var.get().strip() or self.tables[idx].name
+            self.tables[idx] = models.TableModel(name=new_name, columns=cols, rows=self.tables[idx].rows)
+            
+            # Update listbox text only if changed
+            current_text = self.table_list.get(idx)
+            if current_text != new_name:
+                self._ignore_select_event = True
+                try:
+                    self.table_list.delete(idx)
+                    self.table_list.insert(idx, new_name)
+                    if self._active_index == idx:
+                        self.table_list.selection_set(idx)
+                finally:
+                    self._ignore_select_event = False
+        except Exception as e:
+            # Never block UI logic because of persistence error
+            print(f"Error persisting form: {e}")
 
     def _load_table_into_form(self, idx: int) -> None:
         if idx < 0 or idx >= len(self.tables):
@@ -232,29 +366,40 @@ class TableDefinitionFrame(ttk.LabelFrame):
         for iid in list(self.tree.get_children()):
             self.tree.delete(iid)
         for col in table.columns:
+            fk_str = ""
+            if col.foreign_key_table and col.foreign_key_column:
+                fk_str = f"Ref: {col.foreign_key_table}({col.foreign_key_column})"
+            
             self._insert_row(
                 col.name,
                 col.sql_type,
                 nullable=col.nullable,
                 pk=col.is_primary_key,
                 identity=col.is_auto_increment,
+                fk_info=fk_str
             )
         
         if self.on_table_selected:
             self.on_table_selected(idx)
 
     def _add_column(self) -> None:
-        dlg = _ColumnDialog(self, title="Ajouter une colonne")
+        dlg = _ColumnDialog(self, title="Ajouter une colonne", tables=self.tables)
         self.wait_window(dlg)
         if dlg.result is None:
             return
         self._maybe_enforce_single_pk(dlg.result["pk"])
+        
+        fk_str = ""
+        if dlg.result.get("fk_table") and dlg.result.get("fk_col"):
+             fk_str = f"Ref: {dlg.result['fk_table']}({dlg.result['fk_col']})"
+
         self._insert_row(
             dlg.result["name"],
             dlg.result["type"],
             nullable=dlg.result["nullable"],
             pk=dlg.result["pk"],
             identity=dlg.result["identity"],
+            fk_info=fk_str
         )
         self._apply_to_controller()
 
@@ -271,10 +416,28 @@ class TableDefinitionFrame(ttk.LabelFrame):
             "pk": values[3] == "YES",
             "identity": values[4] == "YES",
         }
-        dlg = _ColumnDialog(self, title="Modifier la colonne", initial=current)
+        
+        if len(values) > 5 and "Ref: " in values[5]:
+             clean = values[5].replace("Ref: ", "").strip()
+             try:
+                current["fk_table"] = clean.split("(")[0]
+                current["fk_col"] = clean.split("(")[1].strip(")")
+                current["is_fk"] = True
+             except:
+                pass
+        else:
+             current["is_fk"] = False
+             current["fk_table"] = ""
+             current["fk_col"] = ""
+
+        dlg = _ColumnDialog(self, title="Modifier la colonne", initial=current, tables=self.tables)
         self.wait_window(dlg)
         if dlg.result is None:
             return
+        
+        fk_str = ""
+        if dlg.result.get("fk_table") and dlg.result.get("fk_col"):
+             fk_str = f"Ref: {dlg.result['fk_table']}({dlg.result['fk_col']})"
         self._maybe_enforce_single_pk(dlg.result["pk"], editing_iid=iid)
         self.tree.item(
             iid,
@@ -284,6 +447,7 @@ class TableDefinitionFrame(ttk.LabelFrame):
                 "YES" if dlg.result["nullable"] else "NO",
                 "YES" if dlg.result["pk"] else "NO",
                 "YES" if dlg.result["identity"] else "NO",
+                fk_str
             ),
         )
         self._apply_to_controller()
@@ -319,17 +483,18 @@ class TableDefinitionFrame(ttk.LabelFrame):
 
 
 class _ColumnDialog(tk.Toplevel):
-    def __init__(self, master, *, title: str, initial: dict | None = None) -> None:
+    def __init__(self, master, *, title: str, initial: dict | None = None, tables: list = None) -> None:
         super().__init__(master)
         self.title(title)
         self.resizable(False, False)
         self.result: dict | None = None
+        self.tables = tables or []
 
         # Center the window
         self.withdraw()  # Hide while calculating
         self.update_idletasks()
-        w = 300 # Estimated width
-        h = 300 # Estimated height
+        w = 340 # Increased width
+        h = 450 # Increased height
         ws = self.winfo_screenwidth()
         hs = self.winfo_screenheight()
         x = (ws/2) - (w/2)
@@ -337,19 +502,22 @@ class _ColumnDialog(tk.Toplevel):
         self.geometry('%dx%d+%d+%d' % (w, h, x, y))
         self.deiconify()
 
-        initial = initial or {"name": "", "type": "", "nullable": True, "pk": False, "identity": False}
+        initial = initial or {"name": "", "type": "", "nullable": True, "pk": False, "identity": False, "is_fk": False, "fk_table": "", "fk_col": ""}
         self.name_var = tk.StringVar(value=initial["name"])
         self.type_var = tk.StringVar(value=initial["type"])
         self.null_var = tk.BooleanVar(value=bool(initial["nullable"]))
         self.pk_var = tk.BooleanVar(value=bool(initial["pk"]))
         self.identity_var = tk.BooleanVar(value=bool(initial["identity"]))
+        
+        # FK Vars
+        self.fk_var = tk.BooleanVar(value=bool(initial.get("is_fk")))
+        self.fk_table_var = tk.StringVar(value=initial.get("fk_table", ""))
+        self.fk_col_var = tk.StringVar(value=initial.get("fk_col", ""))
 
         frame = ttk.Frame(self, padding=10)
         frame.grid(row=0, column=0, sticky="nsew")
 
-        # Apply theme to this dialog
-        from ui.theme_manager import ThemeManager
-        ThemeManager().refresh_theme(self)
+        frame.grid(row=0, column=0, sticky="nsew")
 
         ttk.Label(frame, text="Nom de colonne").grid(row=0, column=0, sticky="w")
         ttk.Entry(frame, textvariable=self.name_var, width=26).grid(row=1, column=0, sticky="ew", pady=(2, 8))
@@ -384,12 +552,35 @@ class _ColumnDialog(tk.Toplevel):
         ttk.Checkbutton(opts, text="PK", variable=self.pk_var, command=self._on_pk_toggle).pack(side="left", padx=(8, 0))
         ttk.Checkbutton(opts, text="AUTO INCREMENT", variable=self.identity_var).pack(side="left", padx=(8, 0))
 
+        # FK Section
+        fk_frame = ttk.LabelFrame(frame, text="Clé Étrangère (FK)", padding=10)
+        fk_frame.grid(row=5, column=0, sticky="ew", pady=(10, 0))
+        
+        ttk.Checkbutton(fk_frame, text="Activer FK", variable=self.fk_var, command=self._toggle_fk).pack(anchor="w")
+        
+        self.fk_details = ttk.Frame(fk_frame)
+        self.fk_details.pack(fill="x", pady=(5, 0))
+        
+        ttk.Label(self.fk_details, text="Table réf.").pack(side="left")
+        table_names = [t.name for t in self.tables]
+        self.fk_table_cb = ttk.Combobox(self.fk_details, textvariable=self.fk_table_var, values=table_names, width=12)
+        self.fk_table_cb.pack(side="left", padx=5)
+        
+        ttk.Label(self.fk_details, text="Col.").pack(side="left")
+        self.fk_col_entry = ttk.Entry(self.fk_details, textvariable=self.fk_col_var, width=10)
+        self.fk_col_entry.pack(side="left", padx=5)
+
         btns = ttk.Frame(frame)
-        btns.grid(row=5, column=0, sticky="e", pady=(10, 0))
+        btns.grid(row=6, column=0, sticky="e", pady=(10, 0))
         ttk.Button(btns, text="Annuler", command=self._cancel).pack(side="right")
         ttk.Button(btns, text="OK", command=self._ok).pack(side="right", padx=(0, 8))
 
         self._on_pk_toggle()
+        self._toggle_fk()
+
+        # Apply theme at the VERY END to catch all children including FK frames
+        from ui.theme_manager import ThemeManager
+        ThemeManager().refresh_theme(self)
 
         self.transient(master)
         self.grab_set()
@@ -397,6 +588,18 @@ class _ColumnDialog(tk.Toplevel):
     def _on_pk_toggle(self) -> None:
         if not self.pk_var.get():
             self.identity_var.set(False)
+
+    def _toggle_fk(self) -> None:
+        if self.fk_var.get():
+            for child in self.fk_details.winfo_children():
+                try:
+                    child.configure(state="normal")
+                except: pass
+        else:
+            for child in self.fk_details.winfo_children():
+                try:
+                    child.configure(state="disabled")
+                except: pass
 
     def _ok(self) -> None:
         name = self.name_var.get().strip()
@@ -416,12 +619,24 @@ class _ColumnDialog(tk.Toplevel):
             if is_int and not self.pk_var.get():
                 messagebox.showerror("Erreur", "AUTO INCREMENT (INT) n'est autorisé que si la colonne est Primary Key.")
                 return
+        
+        # FK Validation
+        if self.fk_var.get():
+            if not self.fk_table_var.get().strip():
+                messagebox.showerror("Erreur", "Veuillez sélectionner une table de référence.")
+                return
+            if not self.fk_col_var.get().strip():
+                messagebox.showerror("Erreur", "Veuillez indiquer la colonne de référence.")
+                return
+
         self.result = {
             "name": name,
             "type": sql_type,
             "nullable": bool(self.null_var.get()),
             "pk": bool(self.pk_var.get()),
             "identity": bool(self.identity_var.get()),
+            "fk_table": self.fk_table_var.get().strip() if self.fk_var.get() else None,
+            "fk_col": self.fk_col_var.get().strip() if self.fk_var.get() else None,
         }
         self.destroy()
 

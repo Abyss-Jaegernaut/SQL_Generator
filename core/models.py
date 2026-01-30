@@ -11,6 +11,8 @@ class ColumnModel:
     nullable: bool = True
     is_primary_key: bool = False
     is_auto_increment: bool = False
+    foreign_key_table: str | None = None
+    foreign_key_column: str | None = None
 
 
 @dataclass

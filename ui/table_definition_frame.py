@@ -555,7 +555,7 @@ class _ColumnDialog(tk.Toplevel):
         self.withdraw()  # Hide while calculating
         self.update_idletasks()
         w = 340
-        h = 320 # Reduced from 450 to remove empty space
+        h = 520 # Increased to fit FK fields and buttons
         ws = self.winfo_screenwidth()
         hs = self.winfo_screenheight()
         hs = self.winfo_screenheight()

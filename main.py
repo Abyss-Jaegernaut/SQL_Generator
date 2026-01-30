@@ -2,6 +2,11 @@ import os
 import sys
 import tkinter as tk
 from tkinter import messagebox
+try:
+    from ctypes import windll
+    windll.shcore.SetProcessDpiAwareness(1)
+except:
+    pass
 
 from controllers.app_controller import AppController
 from data.storage import Storage

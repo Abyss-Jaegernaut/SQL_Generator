@@ -21,24 +21,30 @@ class SQLPreviewFrame(ttk.LabelFrame):
         ttk.Button(toolbar, text="💾 Exporter .sql", command=self.export_sql).pack(side="left", padx=(6, 0))
         ttk.Button(toolbar, text="📜 Sauvegarder dans l'historique", command=self._save_to_history).pack(side="left", padx=(6, 0))
 
-        # Actions area (Single line as requested)
+        # Actions area (Split into 2 rows for better fit)
         actions_frame = ttk.Frame(self)
         actions_frame.pack(fill="x", padx=4, pady=(2, 2))
         
-        ttk.Label(actions_frame, text="✅ Sections / Procédures :", font=("Segoe UI", 9, "bold")).pack(side="left", padx=(0, 6))
+        # Row 1: Structure
+        row1 = ttk.Frame(actions_frame)
+        row1.pack(fill="x", anchor="w")
+        ttk.Label(row1, text="Activez :", font=("Segoe UI", 9, "bold")).pack(side="left", padx=(0, 4))
         
-        for name, var in self.actions_vars.items():
-            # Standard tk.Checkbutton as requested
-            chk = tk.Checkbutton(
-                actions_frame, 
-                text=name, 
-                variable=var, 
-                command=self.on_actions_changed,
-                font=("Segoe UI", 9)
-            )
-            chk.pack(side="left", padx=(2, 2))
-            
-        ttk.Button(actions_frame, text="🔁 Tout sélectionner", command=self._select_all).pack(side="left", padx=(6, 0))
+        items = list(self.actions_vars.items())
+        # First 3 are structure usually (Database, Table, Data)
+        for name, var in items[:3]:
+            # Standard tk.Checkbutton
+            tk.Checkbutton(row1, text=name, variable=var, command=self.on_actions_changed, font=("Segoe UI", 9)).pack(side="left", padx=2)
+
+        ttk.Button(row1, text="Tout", width=6, command=self._select_all).pack(side="left", padx=(10, 0))
+
+        # Row 2: Procedures
+        row2 = ttk.Frame(actions_frame)
+        row2.pack(fill="x", anchor="w")
+        ttk.Label(row2, text="Procs :", font=("Segoe UI", 9, "bold")).pack(side="left", padx=(0, 16)) # Indent to align roughly
+        
+        for name, var in items[3:]:
+            tk.Checkbutton(row2, text=name, variable=var, command=self.on_actions_changed, font=("Segoe UI", 9)).pack(side="left", padx=2)
 
         self.text = tk.Text(self, height=24, wrap="none", font=("Consolas", 10))
         self._configure_syntax_highlighting()

@@ -133,6 +133,14 @@ class AppController:
         # Reconstruct the secret to avoid simple string searches
         return "".join(["SQL_", "GEN", "ERATOR", "_S", "ECRET", "_ABYSS_2026"])
 
+    @property
+    def LEGACY_SECRETS(self) -> list[str]:
+        """List of previous secret phrases for backward compatibility migration."""
+        return [
+            # Example: "OLD_SECRET_PHRASE",
+            # Add older secrets here when you change the main SECRET_PHRASE
+        ]
+
     def get_machine_code(self) -> str:
         """Get the current machine's hardware code (cached)"""
         if self._cached_machine_code:
@@ -160,8 +168,25 @@ class AppController:
                 return False
             
             # Verify if the stored key matches this machine
-            from utils.hardware_id import verify_activation_key
-            return verify_activation_key(current_machine_code, stored_key, self.SECRET_PHRASE)
+            from utils.hardware_id import verify_activation_key, generate_activation_key
+            
+            # 1. Try CURRENT secret
+            if verify_activation_key(current_machine_code, stored_key, self.SECRET_PHRASE):
+                return True
+                
+            # 2. Try LEGACY secrets (Migration)
+            for old_secret in self.LEGACY_SECRETS:
+                if verify_activation_key(current_machine_code, stored_key, old_secret):
+                    # Found valid legacy key! Migrate it SILENTLY to new format.
+                    try:
+                        new_key = generate_activation_key(current_machine_code, self.SECRET_PHRASE)
+                        self.storage.set_license_key(new_key)
+                        print(f"INFO: License migrated from legacy to current version.")
+                    except Exception as e:
+                        print(f"WARN: Failed to migrate license: {e}")
+                    return True
+
+            return False
         except Exception:
             # If there's any error in hardware verification, assume not activated
             return False

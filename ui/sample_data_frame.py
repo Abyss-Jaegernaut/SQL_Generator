@@ -5,6 +5,7 @@ from tkinter import filedialog, messagebox, ttk
 
 from controllers.app_controller import AppController
 from core import models
+from core.fake_gen import FakeGenerator
 
 
 class SampleDataFrame(ttk.LabelFrame):
@@ -37,7 +38,11 @@ class SampleDataFrame(ttk.LabelFrame):
         self.submit_btn = ttk.Button(btn_frame, text="✅ Ajouter une ligne", command=self._on_submit)
         self.submit_btn.pack(side="left")
         
-        ttk.Button(btn_frame, text="❌ Annuler", command=self._cancel_edit).pack(side="left", padx=4)
+        # Faker Button
+        self.btn_faker = ttk.Button(btn_frame, text="✨ Remplir auto. (Faker)", command=self._auto_fill_faker)
+        self.btn_faker.pack(side="left", padx=(10, 0))
+
+        ttk.Button(btn_frame, text="❌ Annuler", command=self._cancel_edit).pack(side="left", padx=(10, 0))
         ttk.Button(btn_frame, text="🧹 Effacer tout", command=self._clear_all_rows).pack(side="right", padx=(6, 0))
 
         # Treeview for data
@@ -168,6 +173,26 @@ class SampleDataFrame(ttk.LabelFrame):
             
         if self.on_updated:
             self.on_updated()
+
+    def _auto_fill_faker(self) -> None:
+        if not self.active_table:
+            return
+            
+        from tkinter import simpledialog
+        count = simpledialog.askinteger("Faker", "Combien de lignes générer ?", minvalue=1, maxvalue=1000, initialvalue=10)
+        if not count:
+            return
+            
+        try:
+            gen = FakeGenerator()
+            new_rows = gen.generate_rows(self.active_table, count)
+            self.active_table.rows.extend(new_rows)
+            self._refresh_tree()
+            if self.on_updated:
+                self.on_updated()
+            messagebox.showinfo("Faker", f"{count} lignes générées avec succès !")
+        except Exception as e:
+            messagebox.showerror("Erreur Faker", str(e))
 
     def _load_selected_for_edit(self, event=None) -> None:
         selection = self.tree.selection()

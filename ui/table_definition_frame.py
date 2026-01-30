@@ -493,9 +493,10 @@ class _ColumnDialog(tk.Toplevel):
         # Center the window
         self.withdraw()  # Hide while calculating
         self.update_idletasks()
-        w = 340 # Increased width
-        h = 450 # Increased height
+        w = 340
+        h = 320 # Reduced from 450 to remove empty space
         ws = self.winfo_screenwidth()
+        hs = self.winfo_screenheight()
         hs = self.winfo_screenheight()
         x = (ws/2) - (w/2)
         y = (hs/2) - (h/2)
@@ -548,9 +549,15 @@ class _ColumnDialog(tk.Toplevel):
 
         opts = ttk.Frame(frame)
         opts.grid(row=4, column=0, sticky="w")
-        ttk.Checkbutton(opts, text="NULL autorisé", variable=self.null_var).pack(side="left")
-        ttk.Checkbutton(opts, text="PK", variable=self.pk_var, command=self._on_pk_toggle).pack(side="left", padx=(8, 0))
-        ttk.Checkbutton(opts, text="AUTO INCREMENT", variable=self.identity_var).pack(side="left", padx=(8, 0))
+        
+        self.chk_null = ttk.Checkbutton(opts, text="NULL autorisé", variable=self.null_var)
+        self.chk_null.pack(side="left")
+        
+        self.chk_pk = ttk.Checkbutton(opts, text="PK", variable=self.pk_var, command=self._on_pk_toggle)
+        self.chk_pk.pack(side="left", padx=(8, 0))
+        
+        self.chk_identity = ttk.Checkbutton(opts, text="AUTO INCREMENT", variable=self.identity_var)
+        self.chk_identity.pack(side="left", padx=(8, 0))
 
         # FK Section
         fk_frame = ttk.LabelFrame(frame, text="Clé Étrangère (FK)", padding=10)
@@ -580,7 +587,12 @@ class _ColumnDialog(tk.Toplevel):
 
         # Apply theme at the VERY END to catch all children including FK frames
         from ui.theme_manager import ThemeManager
-        ThemeManager().refresh_theme(self)
+        tm = ThemeManager()
+        tm.refresh_theme(self)
+        
+        # Force Toplevel background to match theme
+        if tm.current_theme:
+            self.configure(bg=tm.current_theme.bg)
 
         self.transient(master)
         self.grab_set()
@@ -588,6 +600,21 @@ class _ColumnDialog(tk.Toplevel):
     def _on_pk_toggle(self) -> None:
         if not self.pk_var.get():
             self.identity_var.set(False)
+
+    def _on_pk_toggle(self) -> None:
+        """Handle PK toggle: PK implies NOT NULL."""
+        is_pk = self.pk_var.get()
+        if(is_pk):
+            # Disable Nullable and uncheck it
+            self.null_var.set(False)
+            self.chk_null.configure(state="disabled")
+            
+            # PK often implies Auto Increment for INT, but let user choose.
+            # Could enable Identity if type is INT, but simple is better.
+        else:
+            # Re-enable Nullable
+            self.chk_null.configure(state="normal")
+            # Default back to True (Nullable) for convenience? No, keep current state.
 
     def _toggle_fk(self) -> None:
         if self.fk_var.get():
